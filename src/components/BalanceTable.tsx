@@ -1,8 +1,17 @@
 import { useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { formatCurrency } from '@/lib/formatCurrency';
 import type { BalanceResult } from '@/lib/balanceCalculations';
+
+export interface SettlePair {
+  aId: string;
+  aName: string;
+  bId: string;
+  bName: string;
+  amount: number;
+}
 
 function netClass(net: number): string {
   return net > 0 ? 'text-green-600' : net < 0 ? 'text-red-600' : 'text-gray-400';
@@ -16,7 +25,7 @@ function netLabel(net: number): string {
  * Interactive inter-department balance table: a summary row per department,
  * and a detail panel (who owes it / whom it owes) for the selected department.
  */
-export function BalanceTable({ result }: { result: BalanceResult }) {
+export function BalanceTable({ result, onSettlePair }: { result: BalanceResult; onSettlePair?: (pair: SettlePair) => void }) {
   const { summary, details } = result;
   const [selectedDept, setSelectedDept] = useState<string | null>(null);
 
@@ -78,9 +87,17 @@ export function BalanceTable({ result }: { result: BalanceResult }) {
               ) : (
                 <div className="space-y-1">
                   {detail.owesYou.map(e => (
-                    <div key={e.department_id} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-green-50">
+                    <div key={e.department_id} className="flex items-center justify-between gap-2 py-1.5 px-3 rounded-lg bg-green-50">
                       <span className="text-sm text-gray-800">{e.department_name}</span>
-                      <span className="text-sm font-bold text-green-700">{formatCurrency(e.amount)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-green-700">{formatCurrency(e.amount)}</span>
+                        {onSettlePair && (
+                          <Button variant="outline" size="sm" onClick={() => onSettlePair({
+                            aId: selected.department_id, aName: selected.department_name,
+                            bId: e.department_id, bName: e.department_name, amount: e.amount,
+                          })}>קזז</Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -94,9 +111,17 @@ export function BalanceTable({ result }: { result: BalanceResult }) {
               ) : (
                 <div className="space-y-1">
                   {detail.youOwe.map(e => (
-                    <div key={e.department_id} className="flex items-center justify-between py-1.5 px-3 rounded-lg bg-red-50">
+                    <div key={e.department_id} className="flex items-center justify-between gap-2 py-1.5 px-3 rounded-lg bg-red-50">
                       <span className="text-sm text-gray-800">{e.department_name}</span>
-                      <span className="text-sm font-bold text-red-700">{formatCurrency(e.amount)}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-red-700">{formatCurrency(e.amount)}</span>
+                        {onSettlePair && (
+                          <Button variant="outline" size="sm" onClick={() => onSettlePair({
+                            aId: selected.department_id, aName: selected.department_name,
+                            bId: e.department_id, bName: e.department_name, amount: e.amount,
+                          })}>קזז</Button>
+                        )}
+                      </div>
                     </div>
                   ))}
                 </div>

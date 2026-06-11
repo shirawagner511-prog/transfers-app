@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { ConfirmModal } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
-import { BalanceTable } from '@/components/BalanceTable';
+import { BalanceTable, type SettlePair } from '@/components/BalanceTable';
 import { formatCurrency } from '@/lib/formatCurrency';
 import {
   type PeriodType, todayISO, periodRange, periodLabel, shiftPeriod, formatDate, formatDateTime,
@@ -44,6 +44,7 @@ export function BalancesPage() {
   const [periodType, setPeriodType] = useState<PeriodType>('week');
   const [anchor, setAnchor] = useState(todayISO());
   const [confirmSettle, setConfirmSettle] = useState(false);
+  const [pendingPair, setPendingPair] = useState<SettlePair | null>(null);
 
   // --- Open (unsettled) balance ---
   const { data: openTransfers = [], isLoading: openLoading } = useQuery({
@@ -121,6 +122,23 @@ export function BalancesPage() {
     onError: () => toast.error('שגיאה בביצוע הקיזוז'),
   });
 
+  const settlePair = useMutation({
+    mutationFn: async (pair: SettlePair) => {
+      const snapshot = { pair: { aName: pair.aName, bName: pair.bName, amount: pair.amount } };
+      const { error } = await supabase.rpc('settle_pair', {
+        p_dept_a: pair.aId, p_dept_b: pair.bId, p_amount: pair.amount, p_snapshot: snapshot,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['balances-open'] });
+      queryClient.invalidateQueries({ queryKey: ['settlements'] });
+      toast.success('הקיזוז בוצע');
+      setPendingPair(null);
+    },
+    onError: () => toast.error('שגיאה בביצוע הקיזוז'),
+  });
+
   const tabBase = 'px-4 py-1.5 text-sm font-medium rounded-md transition-colors';
   const tabOn = 'bg-white text-blue-600 shadow-sm';
   const tabOff = 'text-gray-500 hover:text-gray-700';
@@ -157,7 +175,7 @@ export function BalancesPage() {
                 onClick={() => setConfirmSettle(true)}
                 disabled={openResult.summary.length === 0 || settle.isPending}
               >
-                בצע קיזוז
+                קזז הכל
               </Button>
             </div>
           </div>
@@ -173,7 +191,7 @@ export function BalancesPage() {
               </div>
             </Card>
           ) : (
-            <BalanceTable result={openResult} />
+            <BalanceTable result={openResult} onSettlePair={setPendingPair} />
           )}
         </>
       )}
@@ -246,11 +264,24 @@ export function BalancesPage() {
         open={confirmSettle}
         onClose={() => setConfirmSettle(false)}
         onConfirm={() => settle.mutate()}
-        title="ביצוע קיזוז"
-        message="כל החובות הפתוחים ייסגרו והמאזן יתאפס. לאחר מכן הספירה מתחילה מחדש. לא ניתן לבטל פעולה זו."
-        confirmLabel="בצע קיזוז"
+        title="קיזוז כללי"
+        message="כל החובות הפתוחים (בין כל המחלקות) ייסגרו והמאזן יתאפס. לא ניתן לבטל פעולה זו."
+        confirmLabel="קזז הכל"
         danger
         loading={settle.isPending}
+      />
+
+      <ConfirmModal
+        open={!!pendingPair}
+        onClose={() => setPendingPair(null)}
+        onConfirm={() => { if (pendingPair) settlePair.mutate(pendingPair); }}
+        title="קיזוז בין מחלקות"
+        message={pendingPair
+          ? `לקזז את היתרה בין ${pendingPair.aName} ל${pendingPair.bName} (${formatCurrency(pendingPair.amount)})? ההעברות בין שתי המחלקות ייסגרו. לא ניתן לבטל.`
+          : ''}
+        confirmLabel="בצע קיזוז"
+        danger
+        loading={settlePair.isPending}
       />
     </div>
   );
@@ -258,7 +289,27 @@ export function BalancesPage() {
 
 function SettlementCard({ settlement }: { settlement: Settlement }) {
   const [open, setOpen] = useState(false);
+  const pair = settlement.snapshot?.pair;
   const rows = settlement.snapshot?.summary ?? [];
+
+  if (pair) {
+    return (
+      <Card padding={false}>
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+              <CheckCircle2 className="w-4 h-4" />
+            </div>
+            <div className="text-right">
+              <p className="font-semibold text-gray-900">קיזוז: {pair.aName} ↔ {pair.bName}</p>
+              <p className="text-xs text-gray-500">{formatDateTime(settlement.settled_at)}</p>
+            </div>
+          </div>
+          <span className="text-sm font-bold text-gray-900">{formatCurrency(pair.amount)}</span>
+        </div>
+      </Card>
+    );
+  }
 
   return (
     <Card padding={false}>
@@ -271,7 +322,7 @@ function SettlementCard({ settlement }: { settlement: Settlement }) {
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div className="text-right">
-            <p className="font-semibold text-gray-900">קיזוז — {formatDateTime(settlement.settled_at)}</p>
+            <p className="font-semibold text-gray-900">קיזוז כללי — {formatDateTime(settlement.settled_at)}</p>
             <p className="text-xs text-gray-500">
               {settlement.snapshot?.from
                 ? `כיסה מ-${formatDate(settlement.snapshot.from)} עד ${formatDate(settlement.settled_at)}`
