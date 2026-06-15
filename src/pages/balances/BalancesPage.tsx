@@ -13,7 +13,7 @@ import { formatCurrency } from '@/lib/formatCurrency';
 import {
   type PeriodType, todayISO, periodRange, periodLabel, shiftPeriod, formatDate, formatDateTime,
 } from '@/lib/dateUtils';
-import { computeBalances } from '@/lib/balanceCalculations';
+import { computeBalances, pairwiseDebts } from '@/lib/balanceCalculations';
 import { ExportButton } from '@/components/ui/ExportButton';
 import type { DepartmentBalanceRow } from '@/lib/balanceCalculations';
 
@@ -105,6 +105,7 @@ export function BalancesPage() {
 
   const openResult = computeBalances(openTransfers);
   const periodResult = computeBalances(periodTransfers);
+  const openDebts = pairwiseDebts(openTransfers);
 
   const settle = useMutation({
     mutationFn: async () => {
@@ -191,7 +192,31 @@ export function BalancesPage() {
               </div>
             </Card>
           ) : (
-            <BalanceTable result={openResult} onSettlePair={setPendingPair} />
+            <>
+              <Card className="mb-4">
+                <h2 className="text-base font-semibold text-gray-900 mb-4">חובות פתוחים בין מחלקות</h2>
+                <div className="space-y-2">
+                  {openDebts.map(d => (
+                    <div key={`${d.debtorId}-${d.creditorId}`} className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-lg bg-gray-50">
+                      <span className="text-sm text-gray-800">
+                        <span className="font-medium">{d.debtorName}</span> חייב ל<span className="font-medium">{d.creditorName}</span>
+                      </span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-bold text-gray-900">{formatCurrency(d.amount)}</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setPendingPair({ aId: d.creditorId, aName: d.creditorName, bId: d.debtorId, bName: d.debtorName, amount: d.amount })}
+                        >
+                          קזז
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+              <BalanceTable result={openResult} />
+            </>
           )}
         </>
       )}

@@ -91,3 +91,51 @@ export function computeBalances(transfers: InternalTransfer[]): BalanceResult {
   summary.sort((x, y) => y.net - x.net);
   return { summary, details };
 }
+
+export interface PairDebt {
+  debtorId: string;
+  debtorName: string;
+  creditorId: string;
+  creditorName: string;
+  amount: number;
+}
+
+/**
+ * Flat list of net debts between department pairs (each pair once),
+ * for showing a "קזז" action next to every debt.
+ */
+export function pairwiseDebts(transfers: InternalTransfer[]): PairDebt[] {
+  const names = new Map<string, string>();
+  const gross = new Map<string, Map<string, number>>();
+
+  for (const t of transfers) {
+    if (EXCLUDED_STATUSES.has(t.status)) continue;
+    const creditor = t.from_department_id;
+    const debtor = t.to_department_id;
+    if (!creditor || !debtor || creditor === debtor) continue;
+    names.set(creditor, t.from_department?.name ?? '—');
+    names.set(debtor, t.to_department?.name ?? '—');
+    if (!gross.has(creditor)) gross.set(creditor, new Map());
+    const inner = gross.get(creditor)!;
+    inner.set(debtor, (inner.get(debtor) ?? 0) + t.total_value);
+  }
+
+  const ids = Array.from(names.keys());
+  const debts: PairDebt[] = [];
+  for (let i = 0; i < ids.length; i++) {
+    for (let j = i + 1; j < ids.length; j++) {
+      const a = ids[i];
+      const b = ids[j];
+      const bOwesA = gross.get(a)?.get(b) ?? 0;
+      const aOwesB = gross.get(b)?.get(a) ?? 0;
+      const net = bOwesA - aOwesB;
+      if (net > 0) {
+        debts.push({ debtorId: b, debtorName: names.get(b)!, creditorId: a, creditorName: names.get(a)!, amount: net });
+      } else if (net < 0) {
+        debts.push({ debtorId: a, debtorName: names.get(a)!, creditorId: b, creditorName: names.get(b)!, amount: -net });
+      }
+    }
+  }
+
+  return debts.sort((x, y) => y.amount - x.amount);
+}

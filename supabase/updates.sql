@@ -5,12 +5,25 @@
 -- and the settlement (קיזוז) feature — per-pair and global.
 -- ============================================================
 
--- 1) Harden the auto-profile trigger (fixes "Database error creating new user")
+-- 1) Sign-up handling: ONLY allowlisted department-manager emails may register,
+--    and they become admins automatically. Others are rejected.
 create or replace function handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
+declare
+  -- ★★★ EDIT THIS: the department managers' emails (lowercase). ★★★
+  admin_emails text[] := array[
+    'chef@example.com',       -- מטבח (שף)
+    'cafe@example.com',       -- בית קפה
+    'healthbar@example.com',  -- בר בריאות
+    'events@example.com',     -- אירועים
+    'mk@example.com'          -- MK (מטבחונים)
+  ];
 begin
+  if not (lower(new.email) = any (admin_emails)) then
+    raise exception 'הרשמה מותרת רק למנהלי המחלקות המורשים';
+  end if;
   insert into public.user_profiles (user_id, full_name, role)
-  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.email, 'משתמש חדש'), 'viewer')
+  values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.email, 'משתמש חדש'), 'admin')
   on conflict (user_id) do nothing;
   return new;
 end; $$;

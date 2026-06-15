@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -82,6 +83,11 @@ export function LoginPage() {
               כניסה
             </Button>
           </form>
+
+          <p className="text-center text-sm text-gray-500 mt-6">
+            אין לך חשבון?{' '}
+            <Link to="/signup" className="text-blue-600 font-medium hover:underline">הרשמה</Link>
+          </p>
         </div>
 
         <p className="text-center text-xs text-gray-400 mt-6">
