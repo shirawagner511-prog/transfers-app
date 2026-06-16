@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Clock, TrendingUp, Building2, CalendarDays, Plus, ArrowLeft } from 'lucide-react';
+import { ArrowLeftRight, Clock, TrendingUp, Building2, CalendarDays, Plus, Scale, Wheat, Package, Truck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Card, StatCard } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
 import { TransferStatusBadge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { formatCurrency } from '@/lib/formatCurrency';
@@ -43,8 +42,17 @@ export function DashboardPage() {
   const todayTotal = data?.todayTransfers.reduce((s, t) => s + t.total_value, 0) ?? 0;
   const recentTransfers = data?.todayTransfers.slice(0, 5) ?? [];
 
+  const actions = [
+    { label: 'העברה חדשה', icon: Plus, to: '/transfers', primary: true, show: canEdit() },
+    { label: 'מאזן בין מחלקות', icon: Scale, to: '/balances', show: true },
+    { label: 'סיכום יומי', icon: CalendarDays, to: '/daily-summary', show: true },
+    { label: 'מרכיבים', icon: Wheat, to: '/ingredients', show: true },
+    { label: 'מוצרים', icon: Package, to: '/products', show: true },
+    { label: 'ספקים', icon: Truck, to: '/suppliers', show: true },
+  ].filter(a => a.show);
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">
           שלום, {profile?.full_name?.split(' ')[0] ?? 'משתמש'} 👋
@@ -52,122 +60,75 @@ export function DashboardPage() {
         <p className="text-gray-500 text-sm mt-1">לוח הבקרה הראשי</p>
       </div>
 
-      {/* Primary CTA — New transfer (most prominent) */}
-      {canEdit() && (
-        <button
-          onClick={() => navigate('/transfers')}
-          className="w-full bg-gradient-to-l from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 rounded-2xl p-6 text-white flex items-center justify-between shadow-lg shadow-teal-600/20 transition-all"
-        >
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/20 rounded-xl">
-              <Plus className="w-7 h-7" />
-            </div>
-            <div className="text-right">
-              <p className="text-xl font-bold">העברה חדשה</p>
-              <p className="text-teal-100 text-sm">צור/י העברה פנימית בין מחלקות</p>
-            </div>
-          </div>
-          <ArrowLeft className="w-6 h-6 text-teal-200" />
-        </button>
-      )}
-
-      {/* Daily summary — secondary */}
-      <button
-        onClick={() => navigate('/daily-summary')}
-        className="w-full bg-white border border-gray-200 rounded-2xl p-5 flex items-center justify-between hover:bg-gray-50 transition-colors text-right"
-      >
-        <div>
-          <p className="text-gray-500 text-sm mb-1">סיכום יומי — היום</p>
-          <p className="text-2xl font-bold text-gray-900">{data?.todayTransfers.length ?? 0} העברות</p>
-          <p className="text-gray-500 text-sm mt-1">ערך כולל: {formatCurrency(todayTotal)}</p>
+      {/* Quick actions — the primary focus */}
+      <div>
+        <h2 className="text-base font-semibold text-gray-900 mb-3">פעולות מהירות</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          {actions.map(a => {
+            const Icon = a.icon;
+            return (
+              <button
+                key={a.label}
+                onClick={() => navigate(a.to)}
+                className={`flex flex-col items-center justify-center gap-2.5 rounded-2xl p-6 transition-all ${
+                  a.primary
+                    ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700'
+                    : 'bg-white border border-gray-200 hover:border-teal-300 hover:bg-teal-50/50'
+                }`}
+              >
+                <Icon className={`w-8 h-8 ${a.primary ? 'text-white' : 'text-teal-600'}`} />
+                <span className={`font-semibold text-sm ${a.primary ? 'text-white' : 'text-gray-800'}`}>{a.label}</span>
+              </button>
+            );
+          })}
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <CalendarDays className="w-9 h-9 text-teal-500" />
-          <span className="text-xs text-teal-600">לפרטים →</span>
-        </div>
-      </button>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <StatCard
-          label="העברות היום"
-          value={data?.todayTransfers.length ?? 0}
-          icon={<ArrowLeftRight className="w-5 h-5" />}
-        />
-        <StatCard
-          label="ממתינות לאישור"
-          value={data?.pendingApprovals ?? 0}
-          icon={<Clock className="w-5 h-5" />}
-        />
-        <StatCard
-          label="ערך היום"
-          value={formatCurrency(todayTotal)}
-          icon={<TrendingUp className="w-5 h-5" />}
-        />
-        <StatCard
-          label="מחלקות פעילות"
-          value={data?.activeDepts ?? 0}
-          icon={<Building2 className="w-5 h-5" />}
-        />
       </div>
 
-      {/* Quick actions */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <Card>
-          <h2 className="text-base font-semibold text-gray-900 mb-3">פעולות מהירות</h2>
-          <div className="grid grid-cols-2 gap-2">
-            {canEdit() && (
-              <Button variant="outline" size="sm" onClick={() => navigate('/transfers')} icon={<Plus className="w-4 h-4" />}>
-                העברה חדשה
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={() => navigate('/daily-summary')} icon={<CalendarDays className="w-4 h-4" />}>
-              סיכום יומי
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/transfers')}>
-              כל ההעברות
-            </Button>
-            <Button variant="outline" size="sm" onClick={() => navigate('/ingredients')}>
-              מרכיבים
-            </Button>
-          </div>
-        </Card>
+      {/* Stats — secondary glance */}
+      <div>
+        <h2 className="text-sm font-medium text-gray-500 mb-3">מבט מהיר על היום</h2>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <StatCard label="העברות היום" value={data?.todayTransfers.length ?? 0} icon={<ArrowLeftRight className="w-5 h-5" />} />
+          <StatCard label="ממתינות לאישור" value={data?.pendingApprovals ?? 0} icon={<Clock className="w-5 h-5" />} />
+          <StatCard label="ערך היום" value={formatCurrency(todayTotal)} icon={<TrendingUp className="w-5 h-5" />} />
+          <StatCard label="מחלקות פעילות" value={data?.activeDepts ?? 0} icon={<Building2 className="w-5 h-5" />} />
+        </div>
+      </div>
 
-        {/* Recent transfers today */}
-        <Card>
-          <h2 className="text-base font-semibold text-gray-900 mb-3">העברות היום</h2>
-          {recentTransfers.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-4">אין העברות היום</p>
-          ) : (
-            <div className="space-y-2">
-              {recentTransfers.map(t => (
-                <div key={t.id} className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-2">
-                    {t.transfer_time && (
-                      <span className="text-xs text-gray-400 font-mono">{formatTime(t.transfer_time)}</span>
-                    )}
-                    <span className="text-gray-700">
-                      {(t as any).from_department?.name} → {(t as any).to_department?.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <TransferStatusBadge status={t.status} />
-                    <span className="font-semibold">{formatCurrency(t.total_value)}</span>
-                  </div>
+      {/* Recent transfers today */}
+      <Card>
+        <h2 className="text-base font-semibold text-gray-900 mb-3">העברות היום</h2>
+        {recentTransfers.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-4">אין העברות היום</p>
+        ) : (
+          <div className="space-y-2">
+            {recentTransfers.map(t => (
+              <div key={t.id} className="flex items-center justify-between text-sm">
+                <div className="flex items-center gap-2">
+                  {t.transfer_time && (
+                    <span className="text-xs text-gray-400 font-mono">{formatTime(t.transfer_time)}</span>
+                  )}
+                  <span className="text-gray-700">
+                    {(t as any).from_department?.name} → {(t as any).to_department?.name}
+                  </span>
                 </div>
-              ))}
-              {(data?.todayTransfers.length ?? 0) > 5 && (
-                <button
-                  onClick={() => navigate('/daily-summary')}
-                  className="text-xs text-teal-600 hover:underline mt-1"
-                >
-                  וועוד {(data?.todayTransfers.length ?? 0) - 5} נוספות...
-                </button>
-              )}
-            </div>
-          )}
-        </Card>
-      </div>
+                <div className="flex items-center gap-2">
+                  <TransferStatusBadge status={t.status} />
+                  <span className="font-semibold">{formatCurrency(t.total_value)}</span>
+                </div>
+              </div>
+            ))}
+            {(data?.todayTransfers.length ?? 0) > 5 && (
+              <button
+                onClick={() => navigate('/daily-summary')}
+                className="text-xs text-teal-600 hover:underline mt-1"
+              >
+                ועוד {(data?.todayTransfers.length ?? 0) - 5} נוספות...
+              </button>
+            )}
+          </div>
+        )}
+      </Card>
     </div>
   );
 }
