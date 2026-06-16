@@ -1,6 +1,8 @@
 import { useState, type ReactNode } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Plus } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
+import { useAuth } from '@/hooks/useAuth';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -8,6 +10,8 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const navigate = useNavigate();
+  const { canEdit } = useAuth();
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden" dir="rtl">
@@ -42,11 +46,23 @@ export function AppLayout({ children }: AppLayoutProps) {
 
         {/* Page */}
         <main className="flex-1 overflow-y-auto">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 pb-24">
             {children}
           </div>
         </main>
       </div>
+
+      {/* Floating "new transfer" action — always visible */}
+      {canEdit() && (
+        <button
+          onClick={() => navigate('/transfers')}
+          className="fixed bottom-5 left-5 z-30 flex items-center gap-2 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-semibold rounded-full shadow-xl shadow-teal-600/30 ps-4 pe-5 py-3.5 transition-all"
+          aria-label="העברה חדשה"
+        >
+          <Plus className="w-5 h-5" />
+          <span>העברה חדשה</span>
+        </button>
+      )}
     </div>
   );
 }
