@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Clock, TrendingUp, Building2, CalendarDays, Plus } from 'lucide-react';
+import { ArrowLeftRight, Clock, TrendingUp, Building2, CalendarDays, Plus, ArrowLeft } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Card, StatCard } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -52,23 +52,40 @@ export function DashboardPage() {
         <p className="text-gray-500 text-sm mt-1">לוח הבקרה הראשי</p>
       </div>
 
-      {/* Daily Summary CTA */}
-      <div
-        className="bg-gradient-to-l from-teal-600 to-teal-700 rounded-2xl p-5 text-white cursor-pointer hover:from-teal-700 hover:to-teal-800 transition-all"
+      {/* Primary CTA — New transfer (most prominent) */}
+      {canEdit() && (
+        <button
+          onClick={() => navigate('/transfers')}
+          className="w-full bg-gradient-to-l from-teal-600 to-teal-700 hover:from-teal-700 hover:to-teal-800 rounded-2xl p-6 text-white flex items-center justify-between shadow-lg shadow-teal-600/20 transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-white/20 rounded-xl">
+              <Plus className="w-7 h-7" />
+            </div>
+            <div className="text-right">
+              <p className="text-xl font-bold">העברה חדשה</p>
+              <p className="text-teal-100 text-sm">צור/י העברה פנימית בין מחלקות</p>
+            </div>
+          </div>
+          <ArrowLeft className="w-6 h-6 text-teal-200" />
+        </button>
+      )}
+
+      {/* Daily summary — secondary */}
+      <button
         onClick={() => navigate('/daily-summary')}
+        className="w-full bg-white border border-gray-200 rounded-2xl p-5 flex items-center justify-between hover:bg-gray-50 transition-colors text-right"
       >
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-teal-200 text-sm mb-1">סיכום יומי — היום</p>
-            <p className="text-3xl font-bold">{data?.todayTransfers.length ?? 0} העברות</p>
-            <p className="text-teal-200 text-sm mt-1">ערך כולל: {formatCurrency(todayTotal)}</p>
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <CalendarDays className="w-10 h-10 text-teal-300" />
-            <span className="text-xs text-teal-200">לחץ לפרטים →</span>
-          </div>
+        <div>
+          <p className="text-gray-500 text-sm mb-1">סיכום יומי — היום</p>
+          <p className="text-2xl font-bold text-gray-900">{data?.todayTransfers.length ?? 0} העברות</p>
+          <p className="text-gray-500 text-sm mt-1">ערך כולל: {formatCurrency(todayTotal)}</p>
         </div>
-      </div>
+        <div className="flex flex-col items-end gap-2">
+          <CalendarDays className="w-9 h-9 text-teal-500" />
+          <span className="text-xs text-teal-600">לפרטים →</span>
+        </div>
+      </button>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
