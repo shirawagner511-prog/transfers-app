@@ -57,13 +57,13 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const icons: Record<ToastType, ReactNode> = {
     success: <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />,
     error: <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />,
-    info: <Info className="w-5 h-5 text-blue-500 flex-shrink-0" />,
+    info: <Info className="w-5 h-5 text-teal-500 flex-shrink-0" />,
   };
 
   const bgClass: Record<ToastType, string> = {
     success: 'border-green-200 bg-green-50',
     error: 'border-red-200 bg-red-50',
-    info: 'border-blue-200 bg-blue-50',
+    info: 'border-teal-200 bg-teal-50',
   };
 
   return (

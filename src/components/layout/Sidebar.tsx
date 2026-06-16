@@ -36,7 +36,7 @@ export function Sidebar({ onClose }: SidebarProps) {
     <div className="flex flex-col h-full bg-gray-900 text-white w-64">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-700">
-        <div className="p-2 bg-blue-600 rounded-lg">
+        <div className="p-2 bg-teal-600 rounded-lg">
           <ChefHat className="w-5 h-5 text-white" />
         </div>
         <div>
@@ -57,7 +57,7 @@ export function Sidebar({ onClose }: SidebarProps) {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors
                 ${isActive
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-teal-600 text-white'
                   : 'text-gray-300 hover:bg-gray-800 hover:text-white'}`
               }
             >

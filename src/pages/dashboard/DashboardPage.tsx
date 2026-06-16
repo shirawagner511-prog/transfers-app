@@ -54,18 +54,18 @@ export function DashboardPage() {
 
       {/* Daily Summary CTA */}
       <div
-        className="bg-gradient-to-l from-blue-600 to-blue-700 rounded-2xl p-5 text-white cursor-pointer hover:from-blue-700 hover:to-blue-800 transition-all"
+        className="bg-gradient-to-l from-teal-600 to-teal-700 rounded-2xl p-5 text-white cursor-pointer hover:from-teal-700 hover:to-teal-800 transition-all"
         onClick={() => navigate('/daily-summary')}
       >
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-blue-200 text-sm mb-1">סיכום יומי — היום</p>
+            <p className="text-teal-200 text-sm mb-1">סיכום יומי — היום</p>
             <p className="text-3xl font-bold">{data?.todayTransfers.length ?? 0} העברות</p>
-            <p className="text-blue-200 text-sm mt-1">ערך כולל: {formatCurrency(todayTotal)}</p>
+            <p className="text-teal-200 text-sm mt-1">ערך כולל: {formatCurrency(todayTotal)}</p>
           </div>
           <div className="flex flex-col items-end gap-2">
-            <CalendarDays className="w-10 h-10 text-blue-300" />
-            <span className="text-xs text-blue-200">לחץ לפרטים →</span>
+            <CalendarDays className="w-10 h-10 text-teal-300" />
+            <span className="text-xs text-teal-200">לחץ לפרטים →</span>
           </div>
         </div>
       </div>
@@ -142,7 +142,7 @@ export function DashboardPage() {
               {(data?.todayTransfers.length ?? 0) > 5 && (
                 <button
                   onClick={() => navigate('/daily-summary')}
-                  className="text-xs text-blue-600 hover:underline mt-1"
+                  className="text-xs text-teal-600 hover:underline mt-1"
                 >
                   וועוד {(data?.todayTransfers.length ?? 0) - 5} נוספות...
                 </button>

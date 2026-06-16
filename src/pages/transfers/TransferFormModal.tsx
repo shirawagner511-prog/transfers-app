@@ -356,9 +356,9 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
 
           {fields.length > 0 && (
             <div className="mt-3 flex justify-end">
-              <div className="bg-blue-50 rounded-lg px-4 py-2 text-sm">
-                <span className="text-blue-600">סה"כ ערך ההעברה: </span>
-                <strong className="text-blue-800">{formatCurrency(totalValue)}</strong>
+              <div className="bg-teal-50 rounded-lg px-4 py-2 text-sm">
+                <span className="text-teal-600">סה"כ ערך ההעברה: </span>
+                <strong className="text-teal-800">{formatCurrency(totalValue)}</strong>
               </div>
             </div>
           )}

@@ -267,13 +267,13 @@ export function IngredientsPage() {
       <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
         <button
           onClick={() => setView('active')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'active' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'active' ? 'bg-white text-teal-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           פעילים ({activeIngredients.length})
         </button>
         <button
           onClick={() => setView('archive')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'archive' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'archive' ? 'bg-white text-teal-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           ארכיון ({archivedIngredients.length})
         </button>
@@ -447,7 +447,7 @@ export function IngredientsPage() {
         size="md"
       >
         {historyLoading ? (
-          <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-gray-200 border-t-blue-600 rounded-full animate-spin" /></div>
+          <div className="flex justify-center py-8"><div className="w-6 h-6 border-2 border-gray-200 border-t-teal-600 rounded-full animate-spin" /></div>
         ) : priceHistory.length === 0 ? (
           <p className="text-sm text-gray-500 text-center py-8">אין היסטוריית מחיר עבור מרכיב זה</p>
         ) : (

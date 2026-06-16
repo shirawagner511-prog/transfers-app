@@ -35,6 +35,7 @@ const schema = z.object({
   name: z.string().min(1, 'שם המוצר נדרש'),
   category: z.string().optional(),
   description: z.string().optional(),
+  cost: z.number().min(0, 'עלות לא יכולה להיות שלילית'),
   notes: z.string().optional(),
   is_active: z.boolean(),
   ingredients: z.array(ingItemSchema),
@@ -77,9 +78,9 @@ export function ProductsPage() {
   const { data: products = [], isLoading } = useQuery({ queryKey: ['products'], queryFn: fetchProducts });
   const { data: allIngredients = [] } = useQuery({ queryKey: ['ingredients-active'], queryFn: fetchIngredients });
 
-  const { register, handleSubmit, reset, watch, control, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, control, setValue, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(schema),
-    defaultValues: { is_active: true, ingredients: [] },
+    defaultValues: { is_active: true, cost: 0, ingredients: [] },
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'ingredients' });
@@ -94,17 +95,12 @@ export function ProductsPage() {
 
   const upsert = useMutation({
     mutationFn: async (data: FormData) => {
-      const cost = data.ingredients.reduce((sum, item) => {
-        const ing = allIngredients.find(i => i.id === item.ingredient_id);
-        if (!ing) return sum;
-        return sum + (item.quantity || 0) * ing.current_price * (1 + (item.waste_percentage || 0) / 100);
-      }, 0);
       const productPayload = {
         name: data.name,
         category: data.category || null,
         description: data.description || null,
         selling_price: 0,
-        internal_transfer_price: cost,
+        internal_transfer_price: data.cost,
         notes: data.notes || null,
         is_active: editing ? editing.is_active : true,
         updated_by: user?.id,
@@ -184,7 +180,7 @@ export function ProductsPage() {
 
   function openCreate() {
     setEditing(null);
-    reset({ name: '', category: '', description: '', notes: '', is_active: true, ingredients: [] });
+    reset({ name: '', category: '', description: '', notes: '', is_active: true, cost: 0, ingredients: [] });
     setModalOpen(true);
   }
 
@@ -196,6 +192,7 @@ export function ProductsPage() {
       description: p.description ?? '',
       notes: p.notes ?? '',
       is_active: p.is_active,
+      cost: p.internal_transfer_price,
       ingredients: p.product_ingredients.map(pi => ({
         ingredient_id: pi.ingredient_id,
         quantity: pi.quantity,
@@ -244,13 +241,13 @@ export function ProductsPage() {
       <div className="flex gap-1 mb-4 bg-gray-100 p-1 rounded-lg w-fit">
         <button
           onClick={() => setView('active')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'active' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'active' ? 'bg-white text-teal-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           פעילים ({activeProducts.length})
         </button>
         <button
           onClick={() => setView('archive')}
-          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'archive' ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+          className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${view === 'archive' ? 'bg-white text-teal-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
         >
           ארכיון ({archivedProducts.length})
         </button>
@@ -285,7 +282,7 @@ export function ProductsPage() {
                   onClick={() => setExpandedId(expanded ? null : p.id)}
                 >
                   <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+                    <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
                       <Package className="w-4 h-4" />
                     </div>
                     <div>
@@ -415,6 +412,15 @@ export function ProductsPage() {
             <Select label="קטגוריה" placeholder="בחר קטגוריה" {...register('category')} className="col-span-2">
               {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </Select>
+            <Input
+              label="מחיר עלות (₪)"
+              type="number"
+              step="0.01"
+              dir="ltr"
+              error={errors.cost?.message}
+              {...register('cost', { valueAsNumber: true })}
+              className="col-span-2"
+            />
           </div>
 
           <Textarea label="תיאור" {...register('description')} />
@@ -436,8 +442,15 @@ export function ProductsPage() {
 
             {/* Live cost preview */}
             {fields.length > 0 && (
-              <div className="flex gap-4 text-xs bg-blue-50 rounded-lg px-3 py-2 mb-3">
-                <span>עלות המוצר: <strong>{formatCurrency(computedCost)}</strong></span>
+              <div className="flex items-center justify-between gap-4 text-xs bg-teal-50 rounded-lg px-3 py-2 mb-3">
+                <span>עלות מחושבת מהמתכון: <strong>{formatCurrency(computedCost)}</strong></span>
+                <button
+                  type="button"
+                  onClick={() => setValue('cost', Math.round(computedCost * 100) / 100)}
+                  className="text-teal-600 font-medium hover:underline whitespace-nowrap"
+                >
+                  השתמש בעלות זו
+                </button>
               </div>
             )}
 

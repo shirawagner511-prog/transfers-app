@@ -132,7 +132,7 @@ export function DepartmentsPage() {
   const shown = view === 'active' ? activeDepts : archivedDepts;
 
   const tabBase = 'px-4 py-1.5 text-sm font-medium rounded-md transition-colors';
-  const tabOn = 'bg-white text-blue-600 shadow-sm';
+  const tabOn = 'bg-white text-teal-600 shadow-sm';
   const tabOff = 'text-gray-500 hover:text-gray-700';
 
   return (
@@ -171,7 +171,7 @@ export function DepartmentsPage() {
             <Card key={dept.id} className="flex flex-col gap-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${dept.is_active ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                  <div className={`p-2 rounded-lg ${dept.is_active ? 'bg-teal-100 text-teal-600' : 'bg-gray-100 text-gray-400'}`}>
                     <Building2 className="w-5 h-5" />
                   </div>
                   <div>

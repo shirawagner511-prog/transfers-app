@@ -4,7 +4,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['"Noto Sans Hebrew"', 'Inter', 'system-ui', 'sans-serif'],
+        sans: ['Heebo', 'Inter', 'system-ui', 'sans-serif'],
       },
     },
   },

@@ -38,10 +38,10 @@ export function SignupPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-slate-100 p-4" dir="rtl">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-teal-50 to-slate-100 p-4" dir="rtl">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-2xl mb-4 shadow-lg">
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-teal-600 rounded-2xl mb-4 shadow-lg">
             <ChefHat className="w-8 h-8 text-white" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">מערכת ניהול</h1>
@@ -105,7 +105,7 @@ export function SignupPage() {
 
               <p className="text-center text-sm text-gray-500 mt-6">
                 כבר רשום/ה?{' '}
-                <Link to="/login" className="text-blue-600 font-medium hover:underline">כניסה</Link>
+                <Link to="/login" className="text-teal-600 font-medium hover:underline">כניסה</Link>
               </p>
             </>
           )}

@@ -150,7 +150,7 @@ export function SuppliersPage() {
   }));
 
   const tabBase = 'px-4 py-1.5 text-sm font-medium rounded-md transition-colors';
-  const tabOn = 'bg-white text-blue-600 shadow-sm';
+  const tabOn = 'bg-white text-teal-600 shadow-sm';
   const tabOff = 'text-gray-500 hover:text-gray-700';
 
   return (
@@ -202,7 +202,7 @@ export function SuppliersPage() {
             <Card key={s.id} className="flex flex-col gap-3">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg ${s.is_active ? 'bg-blue-100 text-blue-600' : 'bg-gray-100 text-gray-400'}`}>
+                  <div className={`p-2 rounded-lg ${s.is_active ? 'bg-teal-100 text-teal-600' : 'bg-gray-100 text-gray-400'}`}>
                     <Truck className="w-5 h-5" />
                   </div>
                   <div>

@@ -71,7 +71,7 @@ export function DailySummaryPage() {
             value={selectedDate}
             onChange={e => setSelectedDate(e.target.value)}
             max={todayISO()}
-            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="text-sm border border-gray-300 rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-teal-500"
           />
         </div>
       </div>
@@ -188,7 +188,7 @@ export function DailySummaryPage() {
                             t.status === 'completed' || t.status === 'reconciled' ? 'bg-green-500' :
                             t.status === 'rejected' ? 'bg-red-400' :
                             t.status === 'pending_approval' ? 'bg-yellow-400' :
-                            'bg-blue-400'
+                            'bg-teal-400'
                           }`} />
                           {idx < timeline.length - 1 && (
                             <div className="w-px flex-1 bg-gray-200 mt-1 h-full absolute top-3" />

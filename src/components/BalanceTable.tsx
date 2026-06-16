@@ -53,7 +53,7 @@ export function BalanceTable({ result, onSettlePair }: { result: BalanceResult; 
                   <tr
                     key={row.department_id}
                     onClick={() => setSelectedDept(isSel ? null : row.department_id)}
-                    className={`cursor-pointer transition-colors ${isSel ? 'bg-blue-50' : 'hover:bg-gray-50'}`}
+                    className={`cursor-pointer transition-colors ${isSel ? 'bg-teal-50' : 'hover:bg-gray-50'}`}
                   >
                     <td className="px-4 py-3 font-medium text-gray-900">{row.department_name}</td>
                     <td className="px-4 py-3 text-gray-600">{row.owed_to > 0 ? formatCurrency(row.owed_to) : '—'}</td>
@@ -62,7 +62,7 @@ export function BalanceTable({ result, onSettlePair }: { result: BalanceResult; 
                       <span className={`font-bold ${netClass(row.net)}`}>{netLabel(row.net)}</span>
                     </td>
                     <td className="px-4 py-3 text-left">
-                      <ArrowLeft className={`w-4 h-4 inline ${isSel ? 'text-blue-500' : 'text-gray-300'}`} />
+                      <ArrowLeft className={`w-4 h-4 inline ${isSel ? 'text-teal-500' : 'text-gray-300'}`} />
                     </td>
                   </tr>
                 );

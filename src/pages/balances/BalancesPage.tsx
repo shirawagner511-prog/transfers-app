@@ -141,7 +141,7 @@ export function BalancesPage() {
   });
 
   const tabBase = 'px-4 py-1.5 text-sm font-medium rounded-md transition-colors';
-  const tabOn = 'bg-white text-blue-600 shadow-sm';
+  const tabOn = 'bg-white text-teal-600 shadow-sm';
   const tabOff = 'text-gray-500 hover:text-gray-700';
 
   return (
@@ -322,7 +322,7 @@ function SettlementCard({ settlement }: { settlement: Settlement }) {
       <Card padding={false}>
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+            <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
               <CheckCircle2 className="w-4 h-4" />
             </div>
             <div className="text-right">
@@ -343,7 +343,7 @@ function SettlementCard({ settlement }: { settlement: Settlement }) {
         className="w-full flex items-center justify-between p-4 hover:bg-gray-50 transition-colors"
       >
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
+          <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
             <CheckCircle2 className="w-4 h-4" />
           </div>
           <div className="text-right">
@@ -355,7 +355,7 @@ function SettlementCard({ settlement }: { settlement: Settlement }) {
             </p>
           </div>
         </div>
-        <span className="text-xs text-blue-600">{open ? 'הסתר' : 'הצג יתרות'}</span>
+        <span className="text-xs text-teal-600">{open ? 'הסתר' : 'הצג יתרות'}</span>
       </button>
 
       {open && (

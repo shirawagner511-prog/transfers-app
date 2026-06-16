@@ -94,7 +94,7 @@ export function TransfersPage() {
   if (isLoading) return <PageSpinner />;
 
   const tabBase = 'px-4 py-1.5 text-sm font-medium rounded-md transition-colors';
-  const tabOn = 'bg-white text-blue-600 shadow-sm';
+  const tabOn = 'bg-white text-teal-600 shadow-sm';
   const tabOff = 'text-gray-500 hover:text-gray-700';
 
   function openCreate() {
@@ -104,7 +104,13 @@ export function TransfersPage() {
 
   return (
     <div>
-      <PageHeader title="העברות פנימיות" subtitle={`${transfers.length} העברות סה"כ`} />
+      <PageHeader
+        title="העברות פנימיות"
+        subtitle={`${transfers.length} העברות סה"כ`}
+        actions={canEdit() && (
+          <Button onClick={openCreate} icon={<Plus className="w-4 h-4" />}>העברה חדשה</Button>
+        )}
+      />
 
       <div className="flex gap-1 mb-6 bg-gray-100 p-1 rounded-lg w-fit">
         <button onClick={openCreate} className={`${tabBase} ${view === 'create' ? tabOn : tabOff}`}>
@@ -118,7 +124,7 @@ export function TransfersPage() {
       {view === 'create' ? (
         <Card>
           <div className="text-center py-12">
-            <div className="inline-flex p-3 bg-blue-50 rounded-2xl text-blue-600 mb-4">
+            <div className="inline-flex p-3 bg-teal-50 rounded-2xl text-teal-600 mb-4">
               <ArrowLeftRight className="w-8 h-8" />
             </div>
             <p className="text-gray-700 font-medium mb-1">יצירת העברה פנימית חדשה</p>
@@ -184,7 +190,7 @@ export function TransfersPage() {
                 <tbody className="divide-y divide-gray-100">
                   {filtered.map(t => (
                     <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-blue-600 font-medium">{t.transfer_number}</td>
+                      <td className="px-4 py-3 font-mono text-teal-600 font-medium">{t.transfer_number}</td>
                       <td className="px-4 py-3 text-gray-600">
                         {formatDate(t.transfer_date)}
                         {t.transfer_time && <span className="text-gray-400 text-xs mr-1">{formatTime(t.transfer_time)}</span>}
