@@ -20,7 +20,10 @@ import { PageSpinner } from './components/ui/Spinner';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 30,
+      staleTime: 1000 * 10,
+      refetchInterval: 1000 * 20,
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
       retry: 1,
     },
   },
