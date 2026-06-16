@@ -122,7 +122,7 @@ export function TransferDetailModal({ transferId, onClose, onStatusChange }: Pro
           {/* Items */}
           <div>
             <p className="text-sm font-semibold text-gray-700 mb-2">פריטים</p>
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="border border-gray-200 rounded-lg overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50">
                   <tr>

@@ -174,7 +174,7 @@ export function TransfersPage() {
               action={canEdit() ? { label: 'העברה חדשה', onClick: openCreate, icon: <Plus className="w-4 h-4" /> } : undefined}
             />
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="bg-gray-50 border-b border-gray-200">
                   <tr>

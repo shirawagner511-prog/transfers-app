@@ -354,7 +354,7 @@ export function ProductsPage() {
                     </div>
 
                     {p.product_ingredients.length > 0 && (
-                      <div>
+                      <div className="overflow-x-auto">
                         <p className="text-xs font-semibold text-gray-500 uppercase mb-2">מרכיבים</p>
                         <table className="w-full text-xs">
                           <thead>
