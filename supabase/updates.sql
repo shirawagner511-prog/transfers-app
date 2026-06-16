@@ -18,9 +18,10 @@ declare
     'events@example.com',     -- אירועים
     'mk@example.com'          -- MK (מטבחונים)
   ];
+  email_norm text := lower(trim(new.email));
 begin
-  if not (lower(new.email) = any (admin_emails)) then
-    raise exception 'הרשמה מותרת רק למנהלי המחלקות המורשים';
+  if not exists (select 1 from unnest(admin_emails) e where lower(trim(e)) = email_norm) then
+    raise exception 'הרשמה מותרת רק למנהלי המחלקות המורשים: %', new.email;
   end if;
   insert into public.user_profiles (user_id, full_name, role)
   values (new.id, coalesce(new.raw_user_meta_data->>'full_name', new.email, 'משתמש חדש'), 'admin')
