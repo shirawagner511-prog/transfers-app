@@ -15,7 +15,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { todayISO, nowTimeISO } from '@/lib/dateUtils';
 import { transferItemTotal } from '@/lib/transferCalculations';
-import type { Ingredient } from '@/types/database.types';
+import type { Product, Ingredient } from '@/types/database.types';
 
 const itemSchema = z.object({
   type: z.enum(['product', 'ingredient']),
@@ -49,20 +49,6 @@ interface Props {
   onSuccess: () => void;
 }
 
-interface ProductWithRecipe {
-  id: string;
-  name: string;
-  product_ingredients: { quantity: number; waste_percentage: number; ingredient: { current_price: number } | null }[];
-}
-
-// A product's internal-transfer price is its recipe cost (live from current ingredient prices).
-function productCost(p: ProductWithRecipe): number {
-  return p.product_ingredients.reduce((sum, pi) => {
-    const price = pi.ingredient?.current_price ?? 0;
-    return sum + pi.quantity * price * (1 + (pi.waste_percentage || 0) / 100);
-  }, 0);
-}
-
 let transferSeq = 0;
 function generateTransferNumber(): string {
   const date = new Date();
@@ -83,13 +69,9 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
   const { data: products = [] } = useQuery({
     queryKey: ['products-active'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('id,name,product_ingredients(quantity,waste_percentage,ingredient:ingredients(current_price))')
-        .eq('is_active', true)
-        .order('name');
+      const { data, error } = await supabase.from('products').select('id,name,internal_transfer_price').eq('is_active', true).order('name');
       if (error) throw error;
-      return data as unknown as ProductWithRecipe[];
+      return data as Product[];
     },
     enabled: open,
   });
@@ -206,7 +188,7 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
   function handleProductChange(idx: number, productId: string) {
     const product = products.find(p => p.id === productId);
     if (product) {
-      setValue(`items.${idx}.unit_price`, productCost(product));
+      setValue(`items.${idx}.unit_price`, product.internal_transfer_price);
     }
   }
 

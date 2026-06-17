@@ -19,7 +19,6 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/formatCurrency';
-import { productTotalCost } from '@/lib/costCalculations';
 import { ExportButton } from '@/components/ui/ExportButton';
 
 const PRODUCT_CATEGORIES = ['מנה ראשונה', 'מנה עיקרית', 'קינוח', 'משקה', 'חטיף', 'סלט', 'לחם ואפייה', 'חבילה', 'אחר'];
@@ -216,7 +215,7 @@ export function ProductsPage() {
   const exportRows = filtered.map(p => ({
     'שם': p.name,
     'קטגוריה': p.category ?? '',
-    'עלות (₪)': productTotalCost(p.product_ingredients),
+    'עלות (₪)': p.internal_transfer_price,
     'מספר מרכיבים': p.product_ingredients.length,
     'סטטוס': p.is_active ? 'פעיל' : 'בארכיון',
   }));
@@ -272,7 +271,7 @@ export function ProductsPage() {
       ) : (
         <div className="space-y-3">
           {filtered.map(p => {
-            const cost = productTotalCost(p.product_ingredients);
+            const cost = p.internal_transfer_price;
             const expanded = expandedId === p.id;
 
             return (
@@ -344,7 +343,7 @@ export function ProductsPage() {
                   <div className="border-t border-gray-100 p-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                       <div className="bg-orange-50 rounded-lg p-3 text-center">
-                        <p className="text-xs text-orange-600 mb-1">עלות חומרי גלם</p>
+                        <p className="text-xs text-orange-600 mb-1">עלות המוצר</p>
                         <p className="font-bold text-orange-800">{formatCurrency(cost)}</p>
                       </div>
                       <div className="bg-gray-50 rounded-lg p-3 text-center">
