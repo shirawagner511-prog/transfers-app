@@ -79,6 +79,7 @@ export function IngredientsPage() {
   const [filterUnit, setFilterUnit] = useState('');
   const [view, setView] = useState<'active' | 'archive'>('active');
   const [confirmDelete, setConfirmDelete] = useState<Ingredient | null>(null);
+  const [confirmBulk, setConfirmBulk] = useState(false);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
@@ -195,6 +196,28 @@ export function IngredientsPage() {
   });
 
 
+  const bulkDelete = useMutation({
+    mutationFn: async (items: Ingredient[]) => {
+      let deleted = 0, blocked = 0;
+      for (const ing of items) {
+        const { error } = await supabase.from('ingredients').delete().eq('id', ing.id);
+        if (error) {
+          if ((error as { code?: string }).code === '23503') blocked++;
+          else throw error;
+        } else deleted++;
+      }
+      return { deleted, blocked };
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['ingredients'] });
+      toast.success(res.blocked > 0
+        ? `נמחקו ${res.deleted}, ${res.blocked} משויכים למוצרים ולא נמחקו`
+        : `נמחקו ${res.deleted} מרכיבים`);
+      setConfirmBulk(false);
+    },
+    onError: () => { toast.error('שגיאה במחיקה'); setConfirmBulk(false); },
+  });
+
   function openCreate() {
     setEditing(null);
     reset({ name: '', category: '', unit: '', current_price: 0, supplier_id: '', notes: '', is_active: true });
@@ -278,6 +301,14 @@ export function IngredientsPage() {
           ארכיון ({archivedIngredients.length})
         </button>
       </div>
+
+      {view === 'archive' && canApprove() && archivedIngredients.length > 0 && (
+        <div className="mb-4">
+          <Button variant="danger" size="sm" icon={<Trash2 className="w-4 h-4" />} onClick={() => setConfirmBulk(true)}>
+            מחק את כל הארכיון לצמיתות ({archivedIngredients.length})
+          </Button>
+        </div>
+      )}
 
       {/* Filters */}
       <Card className="mb-6">
@@ -482,6 +513,17 @@ export function IngredientsPage() {
         confirmLabel="מחק לצמיתות"
         danger
         loading={hardDelete.isPending}
+      />
+
+      <ConfirmModal
+        open={confirmBulk}
+        onClose={() => setConfirmBulk(false)}
+        onConfirm={() => bulkDelete.mutate(archivedIngredients)}
+        title="מחיקת כל הארכיון"
+        message={`למחוק לצמיתות את כל ${archivedIngredients.length} המרכיבים שבארכיון? לא ניתן לבטל.`}
+        confirmLabel="מחק הכל"
+        danger
+        loading={bulkDelete.isPending}
       />
     </div>
   );

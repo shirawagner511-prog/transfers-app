@@ -73,6 +73,7 @@ export function ProductsPage() {
   const [editing, setEditing] = useState<ProductWithIngredients | null>(null);
   const [view, setView] = useState<'active' | 'archive'>('active');
   const [confirmDelete, setConfirmDelete] = useState<ProductWithIngredients | null>(null);
+  const [confirmBulk, setConfirmBulk] = useState(false);
 
   const { data: products = [], isLoading } = useQuery({ queryKey: ['products'], queryFn: fetchProducts });
   const { data: allIngredients = [] } = useQuery({ queryKey: ['ingredients-active'], queryFn: fetchIngredients });
@@ -177,6 +178,28 @@ export function ProductsPage() {
     },
   });
 
+  const bulkDelete = useMutation({
+    mutationFn: async (items: ProductWithIngredients[]) => {
+      let deleted = 0, blocked = 0;
+      for (const p of items) {
+        const { error } = await supabase.from('products').delete().eq('id', p.id);
+        if (error) {
+          if ((error as { code?: string }).code === '23503') blocked++;
+          else throw error;
+        } else deleted++;
+      }
+      return { deleted, blocked };
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      toast.success(res.blocked > 0
+        ? `נמחקו ${res.deleted}, ${res.blocked} משויכים להזמנות ולא נמחקו`
+        : `נמחקו ${res.deleted} מוצרים`);
+      setConfirmBulk(false);
+    },
+    onError: () => { toast.error('שגיאה במחיקה'); setConfirmBulk(false); },
+  });
+
   function openCreate() {
     setEditing(null);
     reset({ name: '', category: '', description: '', notes: '', is_active: true, cost: 0, ingredients: [] });
@@ -251,6 +274,14 @@ export function ProductsPage() {
           ארכיון ({archivedProducts.length})
         </button>
       </div>
+
+      {view === 'archive' && canApprove() && archivedProducts.length > 0 && (
+        <div className="mb-4">
+          <Button variant="danger" size="sm" icon={<Trash2 className="w-4 h-4" />} onClick={() => setConfirmBulk(true)}>
+            מחק את כל הארכיון לצמיתות ({archivedProducts.length})
+          </Button>
+        </div>
+      )}
 
       <Card className="mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -522,6 +553,17 @@ export function ProductsPage() {
         confirmLabel="מחק לצמיתות"
         danger
         loading={hardDelete.isPending}
+      />
+
+      <ConfirmModal
+        open={confirmBulk}
+        onClose={() => setConfirmBulk(false)}
+        onConfirm={() => bulkDelete.mutate(archivedProducts)}
+        title="מחיקת כל הארכיון"
+        message={`למחוק לצמיתות את כל ${archivedProducts.length} המוצרים שבארכיון? לא ניתן לבטל.`}
+        confirmLabel="מחק הכל"
+        danger
+        loading={bulkDelete.isPending}
       />
     </div>
   );

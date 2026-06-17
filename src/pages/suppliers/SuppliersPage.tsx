@@ -45,6 +45,7 @@ export function SuppliersPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Supplier | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Supplier | null>(null);
+  const [confirmBulk, setConfirmBulk] = useState(false);
 
   const { data: suppliers = [], isLoading } = useQuery({
     queryKey: ['suppliers'],
@@ -105,6 +106,28 @@ export function SuppliersPage() {
       }
       setConfirmDelete(null);
     },
+  });
+
+  const bulkDelete = useMutation({
+    mutationFn: async (items: Supplier[]) => {
+      let deleted = 0, blocked = 0;
+      for (const s of items) {
+        const { error } = await supabase.from('suppliers').delete().eq('id', s.id);
+        if (error) {
+          if ((error as { code?: string }).code === '23503') blocked++;
+          else throw error;
+        } else deleted++;
+      }
+      return { deleted, blocked };
+    },
+    onSuccess: (res) => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+      toast.success(res.blocked > 0
+        ? `נמחקו ${res.deleted}, ${res.blocked} משויכים לרשומות ולא נמחקו`
+        : `נמחקו ${res.deleted} ספקים`);
+      setConfirmBulk(false);
+    },
+    onError: () => { toast.error('שגיאה במחיקה'); setConfirmBulk(false); },
   });
 
   function openCreate() {
@@ -178,6 +201,14 @@ export function SuppliersPage() {
           ארכיון ({archivedSuppliers.length})
         </button>
       </div>
+
+      {view === 'archive' && canApprove() && archivedSuppliers.length > 0 && (
+        <div className="mb-4">
+          <Button variant="danger" size="sm" icon={<Trash2 className="w-4 h-4" />} onClick={() => setConfirmBulk(true)}>
+            מחק את כל הארכיון לצמיתות ({archivedSuppliers.length})
+          </Button>
+        </div>
+      )}
 
       {/* Search */}
       <div className="mb-6 max-w-sm">
@@ -311,6 +342,17 @@ export function SuppliersPage() {
         confirmLabel="מחק לצמיתות"
         danger
         loading={hardDelete.isPending}
+      />
+
+      <ConfirmModal
+        open={confirmBulk}
+        onClose={() => setConfirmBulk(false)}
+        onConfirm={() => bulkDelete.mutate(archivedSuppliers)}
+        title="מחיקת כל הארכיון"
+        message={`למחוק לצמיתות את כל ${archivedSuppliers.length} הספקים שבארכיון? לא ניתן לבטל.`}
+        confirmLabel="מחק הכל"
+        danger
+        loading={bulkDelete.isPending}
       />
     </div>
   );
