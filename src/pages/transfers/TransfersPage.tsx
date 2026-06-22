@@ -184,57 +184,49 @@ export function TransfersPage() {
               action={canEdit() ? { label: 'העברה חדשה', onClick: openCreate, icon: <Plus className="w-4 h-4" /> } : undefined}
             />
           ) : (
-            <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">מספר</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">תאריך</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">ממחלקה</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">למחלקה</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">ערך</th>
-                    <th className="text-right px-4 py-3 font-medium text-gray-600">סטטוס</th>
-                    <th className="px-4 py-3" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {filtered.map(t => (
-                    <tr key={t.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-3 font-mono text-teal-600 font-medium">{t.transfer_number}</td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {formatDate(t.transfer_date)}
-                        {t.transfer_time && <span className="text-gray-400 text-xs mr-1">{formatTime(t.transfer_time)}</span>}
-                      </td>
-                      <td className="px-4 py-3 text-gray-700">{t.from_department?.name}</td>
-                      <td className="px-4 py-3 text-gray-700">{t.to_department?.name}</td>
-                      <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(t.total_value)}</td>
-                      <td className="px-4 py-3"><TransferStatusBadge status={t.status} /></td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1 justify-end">
-                          <Button variant="ghost" size="sm" onClick={() => setDetailId(t.id)}>
-                            <Eye className="w-4 h-4" />
-                          </Button>
-                          {canApprove() && t.status === 'pending_approval' && (
-                            <>
-                              <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: t.id, status: 'approved' })}>
-                                אשר
-                              </Button>
-                              <Button variant="ghost" size="sm" className="text-red-600" onClick={() => updateStatus.mutate({ id: t.id, status: 'rejected' })}>
-                                דחה
-                              </Button>
-                            </>
-                          )}
-                          {canEdit() && t.status === 'approved' && (
-                            <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: t.id, status: 'completed' })}>
-                              סיים
-                            </Button>
-                          )}
+            <div className="space-y-2">
+              {filtered.map(t => (
+                <Card key={t.id} padding={false}>
+                  <div className="p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-teal-600 text-sm font-medium">{t.transfer_number}</span>
+                          <TransferStatusBadge status={t.status} />
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                        <p className="text-sm text-gray-800 mt-1">
+                          {t.from_department?.name} <span className="text-gray-400">←</span> {t.to_department?.name}
+                        </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {formatDate(t.transfer_date)}
+                          {t.transfer_time && ` · ${formatTime(t.transfer_time)}`}
+                        </p>
+                      </div>
+                      <span className="font-bold text-gray-900 flex-shrink-0">{formatCurrency(t.total_value)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 justify-end mt-2 pt-2 border-t border-gray-100">
+                      <Button variant="ghost" size="sm" onClick={() => setDetailId(t.id)} icon={<Eye className="w-4 h-4" />}>
+                        פרטים
+                      </Button>
+                      {canApprove() && t.status === 'pending_approval' && (
+                        <>
+                          <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: t.id, status: 'approved' })}>
+                            אשר
+                          </Button>
+                          <Button variant="ghost" size="sm" className="text-red-600" onClick={() => updateStatus.mutate({ id: t.id, status: 'rejected' })}>
+                            דחה
+                          </Button>
+                        </>
+                      )}
+                      {canEdit() && t.status === 'approved' && (
+                        <Button variant="outline" size="sm" onClick={() => updateStatus.mutate({ id: t.id, status: 'completed' })}>
+                          סיים
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </Card>
+              ))}
             </div>
           )}
         </>
