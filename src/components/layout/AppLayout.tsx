@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from 'react';
-import { Menu, X, Plus } from 'lucide-react';
+import { Menu, X, Plus, Home } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { useAuth } from '@/hooks/useAuth';
@@ -37,11 +37,20 @@ export function AppLayout({ children }: AppLayoutProps) {
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+            aria-label="תפריט"
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
-          <span className="font-semibold text-gray-900">מערכת ניהול</span>
-          <div className="w-9" />
+          <button onClick={() => navigate('/dashboard')} className="font-semibold text-gray-900">
+            מערכת ניהול
+          </button>
+          <button
+            onClick={() => navigate('/dashboard')}
+            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
+            aria-label="לוח בקרה"
+          >
+            <Home className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Page */}

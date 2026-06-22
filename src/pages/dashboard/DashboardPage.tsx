@@ -54,7 +54,7 @@ export function DashboardPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900">
           שלום, {profile?.full_name?.split(' ')[0] ?? 'משתמש'} 👋
         </h1>
         <p className="text-gray-500 text-sm mt-1">לוח הבקרה הראשי</p>
@@ -70,14 +70,14 @@ export function DashboardPage() {
               <button
                 key={a.label}
                 onClick={() => navigate(a.to)}
-                className={`flex flex-col items-center justify-center gap-2.5 rounded-2xl p-6 transition-all ${
+                className={`flex flex-col items-center justify-center gap-2 rounded-2xl p-4 sm:p-6 transition-all ${
                   a.primary
                     ? 'bg-teal-600 text-white shadow-lg shadow-teal-600/25 hover:bg-teal-700'
                     : 'bg-white border border-gray-200 hover:border-teal-300 hover:bg-teal-50/50'
                 }`}
               >
-                <Icon className={`w-8 h-8 ${a.primary ? 'text-white' : 'text-teal-600'}`} />
-                <span className={`font-semibold text-sm ${a.primary ? 'text-white' : 'text-gray-800'}`}>{a.label}</span>
+                <Icon className={`w-6 h-6 sm:w-7 sm:h-7 ${a.primary ? 'text-white' : 'text-teal-600'}`} />
+                <span className={`font-semibold text-xs sm:text-sm text-center ${a.primary ? 'text-white' : 'text-gray-800'}`}>{a.label}</span>
               </button>
             );
           })}
