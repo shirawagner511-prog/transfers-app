@@ -4,11 +4,12 @@ interface CardProps {
   children: ReactNode;
   className?: string;
   padding?: boolean;
+  onClick?: () => void;
 }
 
-export function Card({ children, className = '', padding = true }: CardProps) {
+export function Card({ children, className = '', padding = true, onClick }: CardProps) {
   return (
-    <div className={`bg-white rounded-xl border border-gray-200 shadow-sm ${padding ? 'p-5' : ''} ${className}`}>
+    <div onClick={onClick} className={`bg-white rounded-xl border border-gray-200 shadow-sm ${padding ? 'p-5' : ''} ${className}`}>
       {children}
     </div>
   );
@@ -20,11 +21,15 @@ interface StatCardProps {
   icon?: ReactNode;
   trend?: { value: string; positive: boolean };
   className?: string;
+  onClick?: () => void;
 }
 
-export function StatCard({ label, value, icon, trend, className = '' }: StatCardProps) {
+export function StatCard({ label, value, icon, trend, className = '', onClick }: StatCardProps) {
   return (
-    <Card className={className}>
+    <Card
+      onClick={onClick}
+      className={`${onClick ? 'cursor-pointer hover:border-teal-300 hover:shadow-md transition-all' : ''} ${className}`}
+    >
       <div className="flex items-start justify-between">
         <div>
           <p className="text-sm text-gray-500 mb-1">{label}</p>

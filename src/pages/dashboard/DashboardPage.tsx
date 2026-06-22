@@ -88,10 +88,10 @@ export function DashboardPage() {
       <div>
         <h2 className="text-sm font-medium text-gray-500 mb-3">מבט מהיר על היום</h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <StatCard label="העברות היום" value={data?.todayTransfers.length ?? 0} icon={<ArrowLeftRight className="w-5 h-5" />} />
-          <StatCard label="ממתינות לאישור" value={data?.pendingApprovals ?? 0} icon={<Clock className="w-5 h-5" />} />
-          <StatCard label="ערך היום" value={formatCurrency(todayTotal)} icon={<TrendingUp className="w-5 h-5" />} />
-          <StatCard label="מחלקות פעילות" value={data?.activeDepts ?? 0} icon={<Building2 className="w-5 h-5" />} />
+          <StatCard label="העברות היום" value={data?.todayTransfers.length ?? 0} icon={<ArrowLeftRight className="w-5 h-5" />} onClick={() => navigate('/daily-summary')} />
+          <StatCard label="ממתינות לאישור" value={data?.pendingApprovals ?? 0} icon={<Clock className="w-5 h-5" />} onClick={() => navigate('/transfers')} />
+          <StatCard label="ערך היום" value={formatCurrency(todayTotal)} icon={<TrendingUp className="w-5 h-5" />} onClick={() => navigate('/daily-summary')} />
+          <StatCard label="מחלקות פעילות" value={data?.activeDepts ?? 0} icon={<Building2 className="w-5 h-5" />} onClick={() => navigate('/departments')} />
         </div>
       </div>
 
