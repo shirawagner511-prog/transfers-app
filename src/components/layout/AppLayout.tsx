@@ -64,7 +64,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Floating "new transfer" action — always visible */}
       {canEdit() && (
         <button
-          onClick={() => navigate('/transfers')}
+          onClick={() => navigate('/transfers?new=1')}
           className="fixed bottom-5 left-5 z-30 flex items-center gap-2 bg-teal-600 hover:bg-teal-700 active:bg-teal-800 text-white font-semibold rounded-full shadow-xl shadow-teal-600/30 ps-4 pe-5 py-3.5 transition-all"
           aria-label="העברה חדשה"
         >

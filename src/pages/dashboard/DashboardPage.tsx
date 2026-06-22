@@ -42,7 +42,7 @@ export function DashboardPage() {
   const recentTransfers = data?.todayTransfers.slice(0, 5) ?? [];
 
   const actions = [
-    { label: 'העברה חדשה', icon: Plus, to: '/transfers', primary: true, show: canEdit() },
+    { label: 'העברה חדשה', icon: Plus, to: '/transfers?new=1', primary: true, show: canEdit() },
     { label: 'מאזן בין מחלקות', icon: Scale, to: '/balances', show: true },
     { label: 'סיכום יומי', icon: CalendarDays, to: '/daily-summary', show: true },
     { label: 'מרכיבים', icon: Wheat, to: '/ingredients', show: true },

@@ -22,8 +22,9 @@ function netLabel(net: number): string {
 }
 
 /**
- * Interactive inter-department balance table: a summary row per department,
- * and a detail panel (who owes it / whom it owes) for the selected department.
+ * Inter-department balances. Summary is a mobile-friendly row list (no
+ * horizontal scroll); tapping a department opens its detail (who owes it /
+ * whom it owes), with an optional "קזז" action per pair.
  */
 export function BalanceTable({ result, onSettlePair }: { result: BalanceResult; onSettlePair?: (pair: SettlePair) => void }) {
   const { summary, details } = result;
@@ -35,40 +36,28 @@ export function BalanceTable({ result, onSettlePair }: { result: BalanceResult; 
   return (
     <div className="space-y-4">
       <Card padding={false}>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">מחלקה</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">חייבים לה</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">היא חייבת</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">יתרה נטו</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {summary.map(row => {
-                const isSel = row.department_id === selectedDept;
-                return (
-                  <tr
-                    key={row.department_id}
-                    onClick={() => setSelectedDept(isSel ? null : row.department_id)}
-                    className={`cursor-pointer transition-colors ${isSel ? 'bg-teal-50' : 'hover:bg-gray-50'}`}
-                  >
-                    <td className="px-4 py-3 font-medium text-gray-900">{row.department_name}</td>
-                    <td className="px-4 py-3 text-gray-600">{row.owed_to > 0 ? formatCurrency(row.owed_to) : '—'}</td>
-                    <td className="px-4 py-3 text-gray-600">{row.owes > 0 ? formatCurrency(row.owes) : '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={`font-bold ${netClass(row.net)}`}>{netLabel(row.net)}</span>
-                    </td>
-                    <td className="px-4 py-3 text-left">
-                      <ArrowLeft className={`w-4 h-4 inline ${isSel ? 'text-teal-500' : 'text-gray-300'}`} />
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="divide-y divide-gray-100">
+          {summary.map(row => {
+            const isSel = row.department_id === selectedDept;
+            return (
+              <button
+                key={row.department_id}
+                onClick={() => setSelectedDept(isSel ? null : row.department_id)}
+                className={`w-full flex items-center justify-between gap-3 px-4 py-3 text-right transition-colors ${isSel ? 'bg-teal-50' : 'hover:bg-gray-50'}`}
+              >
+                <div className="min-w-0">
+                  <p className="font-medium text-gray-900">{row.department_name}</p>
+                  <p className="text-xs text-gray-500">
+                    חייבים לה {row.owed_to > 0 ? formatCurrency(row.owed_to) : '—'} · היא חייבת {row.owes > 0 ? formatCurrency(row.owes) : '—'}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <span className={`font-bold ${netClass(row.net)}`}>{netLabel(row.net)}</span>
+                  <ArrowLeft className={`w-4 h-4 ${isSel ? 'text-teal-500' : 'text-gray-300'}`} />
+                </div>
+              </button>
+            );
+          })}
         </div>
       </Card>
 

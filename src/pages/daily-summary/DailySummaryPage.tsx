@@ -9,7 +9,6 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { todayISO, formatTime } from '@/lib/dateUtils';
 import { dailyTotalValue } from '@/lib/transferCalculations';
-import { computeBalances } from '@/lib/balanceCalculations';
 import { TransferDetailModal } from '../transfers/TransferDetailModal';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -39,7 +38,6 @@ export function DailySummaryPage() {
   });
 
   const totalValue = dailyTotalValue(transfers);
-  const balanceSummary = computeBalances(transfers).summary;
   const pending = transfers.filter(t => t.status === 'pending_approval');
   const drafts = transfers.filter(t => t.status === 'draft');
   const rejected = transfers.filter(t => t.status === 'rejected');
@@ -123,41 +121,6 @@ export function DailySummaryPage() {
             </Card>
           ) : (
             <>
-              {/* Net balances by department */}
-              {balanceSummary.length > 0 && (
-                <Card>
-                  <h2 className="text-base font-semibold text-gray-900 mb-1">מאזן בין מחלקות — מי חייב למי</h2>
-                  <p className="text-xs text-gray-500 mb-4">יתרה נטו של ההעברות ביום זה (ירוק = חייבים לה, אדום = היא חייבת)</p>
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="border-b border-gray-200 text-gray-500">
-                        <tr>
-                          <th className="text-right py-2 font-medium">מחלקה</th>
-                          <th className="text-right py-2 font-medium">חייבים לה</th>
-                          <th className="text-right py-2 font-medium">היא חייבת</th>
-                          <th className="text-right py-2 font-medium">יתרה נטו</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {balanceSummary.map(row => (
-                          <tr key={row.department_id}>
-                            <td className="py-2 font-medium text-gray-900">{row.department_name}</td>
-                            <td className="py-2 text-gray-600">{row.owed_to > 0 ? formatCurrency(row.owed_to) : '—'}</td>
-                            <td className="py-2 text-gray-600">{row.owes > 0 ? formatCurrency(row.owes) : '—'}</td>
-                            <td className="py-2 font-bold">
-                              <span className={row.net > 0 ? 'text-green-600' : row.net < 0 ? 'text-red-600' : 'text-gray-400'}>
-                                {row.net > 0 ? '+' : ''}{formatCurrency(row.net)}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <p className="text-xs text-gray-400 mt-3">לתצוגה שבועית או חודשית עברי ל"מאזן בין מחלקות" בתפריט</p>
-                </Card>
-              )}
-
               {/* Timeline */}
               <Card>
                 <h2 className="text-base font-semibold text-gray-900 mb-4">ציר זמן העברות</h2>

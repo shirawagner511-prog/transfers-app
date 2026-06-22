@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Search, Filter, Eye, ArrowLeftRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
@@ -42,12 +43,21 @@ export function TransfersPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const [view, setView] = useState<'create' | 'history'>('create');
-  const [createOpen, setCreateOpen] = useState(true);
+  const [searchParams] = useSearchParams();
+  const [view, setView] = useState<'create' | 'history'>('history');
+  const [createOpen, setCreateOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<TransferStatus | ''>('');
   const [filterDept, setFilterDept] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setView('create');
+      setCreateOpen(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const { data: transfers = [], isLoading } = useQuery({ queryKey: ['transfers'], queryFn: fetchTransfers });
 
