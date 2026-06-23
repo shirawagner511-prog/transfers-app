@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Package, Trash2, ChevronDown, ChevronUp, Search, Archive, RotateCcw } from 'lucide-react';
+import { Plus, Pencil, Package, Trash2, ChevronDown, ChevronUp, Search, Archive, RotateCcw, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Product, Ingredient, ProductIngredient } from '@/types/database.types';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -20,6 +20,7 @@ import { useToast } from '@/components/ui/Toast';
 import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { ExportButton } from '@/components/ui/ExportButton';
+import { ItemInfoModal } from '@/components/ItemInfoModal';
 
 const PRODUCT_CATEGORIES = ['מנה ראשונה', 'מנה עיקרית', 'קינוח', 'משקה', 'חטיף', 'סלט', 'לחם ואפייה', 'חבילה', 'אחר'];
 
@@ -74,6 +75,7 @@ export function ProductsPage() {
   const [view, setView] = useState<'active' | 'archive'>('active');
   const [confirmDelete, setConfirmDelete] = useState<ProductWithIngredients | null>(null);
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [infoItem, setInfoItem] = useState<ProductWithIngredients | null>(null);
 
   const { data: products = [], isLoading } = useQuery({ queryKey: ['products'], queryFn: fetchProducts });
   const { data: allIngredients = [] } = useQuery({ queryKey: ['ingredients-active'], queryFn: fetchIngredients });
@@ -308,14 +310,14 @@ export function ProductsPage() {
             return (
               <Card key={p.id} padding={false}>
                 <div
-                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 transition-colors"
+                  className="flex flex-wrap items-center justify-between gap-2 p-4 cursor-pointer hover:bg-gray-50 transition-colors"
                   onClick={() => setExpandedId(expanded ? null : p.id)}
                 >
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-teal-50 rounded-lg text-teal-600">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="p-2 bg-teal-50 rounded-lg text-teal-600 flex-shrink-0">
                       <Package className="w-4 h-4" />
                     </div>
-                    <div>
+                    <div className="min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-gray-900">{p.name}</span>
                         {p.category && <Badge variant="gray">{p.category}</Badge>}
@@ -328,6 +330,7 @@ export function ProductsPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); setInfoItem(p); }} title="פרטים" icon={<Info className="w-3.5 h-3.5" />} />
                     {canEdit() && p.is_active && (
                       <>
                         <Button
@@ -361,7 +364,7 @@ export function ProductsPage() {
                             onClick={e => { e.stopPropagation(); setConfirmDelete(p); }}
                             icon={<Trash2 className="w-3.5 h-3.5 text-red-500" />}
                           >
-                            מחק לצמיתות
+                            מחק
                           </Button>
                         )}
                       </>
@@ -564,6 +567,15 @@ export function ProductsPage() {
         confirmLabel="מחק הכל"
         danger
         loading={bulkDelete.isPending}
+      />
+
+      <ItemInfoModal
+        open={!!infoItem}
+        onClose={() => setInfoItem(null)}
+        title={infoItem ? `פרטי מוצר — ${infoItem.name}` : 'פרטים'}
+        createdBy={infoItem?.created_by ?? null}
+        createdAt={infoItem?.created_at ?? null}
+        updatedAt={infoItem?.updated_at ?? null}
       />
     </div>
   );

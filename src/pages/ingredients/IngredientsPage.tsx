@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Search, History, TrendingUp, Wheat, Archive, RotateCcw, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Search, History, TrendingUp, Wheat, Archive, RotateCcw, Trash2, Info } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Ingredient, Supplier, IngredientPriceHistory } from '@/types/database.types';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -21,6 +21,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { formatDateTime } from '@/lib/dateUtils';
 import { ExportButton } from '@/components/ui/ExportButton';
+import { ItemInfoModal } from '@/components/ItemInfoModal';
 
 const UNITS = ['ק"ג', 'גרם', 'ליטר', 'מ"ל', 'יחידה', 'חבילה', 'קרטון', 'צרור'];
 const CATEGORIES = ['ירקות', 'פירות', 'בשר', 'עוף', 'דגים', 'מוצרי חלב', 'לחם ואפייה', 'תבלינים', 'שמנים', 'יבש', 'משקאות', 'אחר'];
@@ -80,6 +81,7 @@ export function IngredientsPage() {
   const [view, setView] = useState<'active' | 'archive'>('active');
   const [confirmDelete, setConfirmDelete] = useState<Ingredient | null>(null);
   const [confirmBulk, setConfirmBulk] = useState(false);
+  const [infoItem, setInfoItem] = useState<Ingredient | null>(null);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
@@ -334,66 +336,44 @@ export function IngredientsPage() {
           action={view === 'active' && canEdit() ? { label: 'הוסף מרכיב', onClick: openCreate } : undefined}
         />
       ) : (
-        <div className="bg-white rounded-xl border border-gray-200 overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">שם</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">קטגוריה</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">יחידה</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">מחיר נוכחי</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">ספק</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">סטטוס</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {filtered.map(ing => (
-                <tr key={ing.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 font-medium text-gray-900">{ing.name}</td>
-                  <td className="px-4 py-3 text-gray-600">{ing.category ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{ing.unit}</td>
-                  <td className="px-4 py-3 font-semibold text-gray-900">{formatCurrency(ing.current_price)}</td>
-                  <td className="px-4 py-3 text-gray-600">{ing.supplier?.name ?? '—'}</td>
-                  <td className="px-4 py-3">
-                    <Badge variant={ing.is_active ? 'green' : 'gray'}>{ing.is_active ? 'פעיל' : 'לא פעיל'}</Badge>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 justify-end">
-                      <Button variant="ghost" size="sm" onClick={() => openHistory(ing)} title="היסטוריית מחיר">
-                        <History className="w-4 h-4" />
-                      </Button>
-                      {canEdit() && ing.is_active && (
-                        <>
-                          <Button variant="ghost" size="sm" onClick={() => openPriceModal(ing)} title="עדכן מחיר">
-                            <TrendingUp className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => openEdit(ing)} title="עריכה">
-                            <Pencil className="w-4 h-4" />
-                          </Button>
-                          <Button variant="ghost" size="sm" onClick={() => setActive.mutate({ ingredient: ing, active: false })} title="העבר לארכיון">
-                            <Archive className="w-4 h-4" />
-                          </Button>
-                        </>
-                      )}
-                      {canEdit() && !ing.is_active && (
-                        <>
-                          <Button variant="ghost" size="sm" onClick={() => setActive.mutate({ ingredient: ing, active: true })} title="שחזר">
-                            <RotateCcw className="w-4 h-4" />
-                          </Button>
-                          {canApprove() && (
-                            <Button variant="ghost" size="sm" onClick={() => setConfirmDelete(ing)} title="מחק לצמיתות">
-                              <Trash2 className="w-4 h-4 text-red-500" />
-                            </Button>
-                          )}
-                        </>
-                      )}
+        <div className="space-y-2">
+          {filtered.map(ing => (
+            <Card key={ing.id} padding={false}>
+              <div className="p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium text-gray-900">{ing.name}</span>
+                      {!ing.is_active && <Badge variant="gray">בארכיון</Badge>}
                     </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {[ing.category, ing.unit, ing.supplier?.name].filter(Boolean).join(' · ') || '—'}
+                    </p>
+                  </div>
+                  <span className="font-bold text-gray-900 flex-shrink-0">{formatCurrency(ing.current_price)}</span>
+                </div>
+                <div className="flex flex-wrap items-center gap-1 justify-end mt-2 pt-2 border-t border-gray-100">
+                  <Button variant="ghost" size="sm" onClick={() => setInfoItem(ing)} title="פרטים" icon={<Info className="w-4 h-4" />} />
+                  <Button variant="ghost" size="sm" onClick={() => openHistory(ing)} title="היסטוריית מחיר" icon={<History className="w-4 h-4" />} />
+                  {canEdit() && ing.is_active && (
+                    <>
+                      <Button variant="ghost" size="sm" onClick={() => openPriceModal(ing)} icon={<TrendingUp className="w-4 h-4" />}>מחיר</Button>
+                      <Button variant="ghost" size="sm" onClick={() => openEdit(ing)} icon={<Pencil className="w-4 h-4" />}>עריכה</Button>
+                      <Button variant="ghost" size="sm" onClick={() => setActive.mutate({ ingredient: ing, active: false })} icon={<Archive className="w-4 h-4" />}>ארכיון</Button>
+                    </>
+                  )}
+                  {canEdit() && !ing.is_active && (
+                    <>
+                      <Button variant="ghost" size="sm" onClick={() => setActive.mutate({ ingredient: ing, active: true })} icon={<RotateCcw className="w-4 h-4" />}>שחזר</Button>
+                      {canApprove() && (
+                        <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setConfirmDelete(ing)} icon={<Trash2 className="w-4 h-4" />}>מחק</Button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            </Card>
+          ))}
         </div>
       )}
 
@@ -524,6 +504,15 @@ export function IngredientsPage() {
         confirmLabel="מחק הכל"
         danger
         loading={bulkDelete.isPending}
+      />
+
+      <ItemInfoModal
+        open={!!infoItem}
+        onClose={() => setInfoItem(null)}
+        title={infoItem ? `פרטי מרכיב — ${infoItem.name}` : 'פרטים'}
+        createdBy={infoItem?.created_by ?? null}
+        createdAt={infoItem?.created_at ?? null}
+        updatedAt={infoItem?.updated_at ?? null}
       />
     </div>
   );
