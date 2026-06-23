@@ -33,7 +33,10 @@ export function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         {/* Mobile topbar */}
-        <div className="md:hidden flex items-center justify-between px-4 py-3 bg-white border-b border-gray-200">
+        <div
+          className="md:hidden flex items-center justify-between px-4 pb-3 bg-white border-b border-gray-200"
+          style={{ paddingTop: 'calc(0.75rem + env(safe-area-inset-top))' }}
+        >
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"

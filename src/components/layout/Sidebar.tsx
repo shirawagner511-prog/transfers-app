@@ -33,7 +33,7 @@ export function Sidebar({ onClose }: SidebarProps) {
   const { profile, signOut } = useAuth();
 
   return (
-    <div className="flex flex-col h-full bg-gray-900 text-white w-64">
+    <div className="flex flex-col h-full bg-gray-900 text-white w-64" style={{ paddingTop: 'env(safe-area-inset-top)' }}>
       {/* Logo — clicking returns to dashboard */}
       <NavLink to="/dashboard" onClick={onClose} className="flex items-center gap-3 px-5 py-5 border-b border-gray-700 hover:bg-gray-800 transition-colors">
         <div className="p-2 bg-teal-600 rounded-lg">
