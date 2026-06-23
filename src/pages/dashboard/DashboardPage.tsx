@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Clock, Building2, CalendarDays, Plus, Scale, Wheat, Package, Truck } from 'lucide-react';
+import { ArrowLeftRight, Clock, CalendarDays, Plus, Scale, Wheat, Package, Truck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Card, StatCard } from '@/components/ui/Card';
 import { TransferStatusBadge } from '@/components/ui/Badge';
@@ -100,32 +100,33 @@ export function DashboardPage() {
       {/* Stats — secondary glance */}
       <div>
         <h2 className="text-sm font-medium text-gray-500 mb-3">מבט מהיר על היום</h2>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-2 gap-3">
           <StatCard label="העברות היום" value={data?.todayTransfers.length ?? 0} icon={<ArrowLeftRight className="w-5 h-5" />} onClick={() => navigate('/daily-summary')} />
           <StatCard label="ממתינות לאישור" value={data?.pendingApprovals ?? 0} icon={<Clock className="w-5 h-5" />} onClick={() => navigate('/transfers')} />
-          <StatCard label="מחלקות פעילות" value={data?.activeDepts ?? 0} icon={<Building2 className="w-5 h-5" />} onClick={() => navigate('/departments')} />
         </div>
       </div>
 
       {/* Open debts between departments */}
-      {topDebts.length > 0 && (
-        <Card>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900">חובות בין מחלקות</h2>
-            <button onClick={() => navigate('/balances')} className="text-xs text-teal-600 hover:underline">לכל המאזן →</button>
-          </div>
+      <Card>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-gray-900">חובות פתוחים בין מחלקות</h2>
+          <button onClick={() => navigate('/balances')} className="text-xs text-teal-600 font-medium hover:underline">לכל המאזן →</button>
+        </div>
+        {topDebts.length === 0 ? (
+          <p className="text-sm text-gray-400 text-center py-6">אין חובות פתוחים בין מחלקות 🎉</p>
+        ) : (
           <div className="space-y-2">
-            {topDebts.slice(0, 5).map(d => (
-              <div key={`${d.debtorId}-${d.creditorId}`} className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">
-                  <span className="font-medium">{d.debtorName}</span> חייב ל<span className="font-medium">{d.creditorName}</span>
+            {topDebts.map(d => (
+              <div key={`${d.debtorId}-${d.creditorId}`} className="flex items-center justify-between gap-3 py-2.5 px-3 rounded-lg bg-gray-50">
+                <span className="text-sm text-gray-800">
+                  <span className="font-semibold">{d.debtorName}</span> חייב ל<span className="font-semibold">{d.creditorName}</span>
                 </span>
-                <span className="font-bold text-gray-900">{formatCurrency(d.amount)}</span>
+                <span className="font-bold text-gray-900 flex-shrink-0">{formatCurrency(d.amount)}</span>
               </div>
             ))}
           </div>
-        </Card>
-      )}
+        )}
+      </Card>
 
       {/* Recent transfers today */}
       <Card>

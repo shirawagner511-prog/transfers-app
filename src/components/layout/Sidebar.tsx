@@ -34,8 +34,8 @@ export function Sidebar({ onClose }: SidebarProps) {
 
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white w-64">
-      {/* Logo */}
-      <div className="flex items-center gap-3 px-5 py-5 border-b border-gray-700">
+      {/* Logo — clicking returns to dashboard */}
+      <NavLink to="/dashboard" onClick={onClose} className="flex items-center gap-3 px-5 py-5 border-b border-gray-700 hover:bg-gray-800 transition-colors">
         <div className="p-2 bg-teal-600 rounded-lg">
           <ChefHat className="w-5 h-5 text-white" />
         </div>
@@ -43,7 +43,7 @@ export function Sidebar({ onClose }: SidebarProps) {
           <p className="font-bold text-sm text-white">מערכת ניהול</p>
           <p className="text-xs text-gray-400">העברות ומלאי</p>
         </div>
-      </div>
+      </NavLink>
 
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">

@@ -38,7 +38,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast, success, error, info }}>
       {children}
-      <div className="fixed bottom-4 start-4 z-[100] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+      <div className="fixed top-5 left-1/2 -translate-x-1/2 z-[100] flex flex-col items-center gap-2 w-full max-w-md px-4 pointer-events-none">
         {toasts.map(t => (
           <ToastItem key={t.id} toast={t} onClose={() => remove(t.id)} />
         ))}
@@ -55,30 +55,30 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   }, []);
 
   const icons: Record<ToastType, ReactNode> = {
-    success: <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />,
-    error: <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />,
-    info: <Info className="w-5 h-5 text-teal-500 flex-shrink-0" />,
+    success: <CheckCircle className="w-6 h-6 text-green-600 flex-shrink-0" />,
+    error: <AlertCircle className="w-6 h-6 text-red-600 flex-shrink-0" />,
+    info: <Info className="w-6 h-6 text-teal-600 flex-shrink-0" />,
   };
 
   const bgClass: Record<ToastType, string> = {
-    success: 'border-green-200 bg-green-50',
-    error: 'border-red-200 bg-red-50',
-    info: 'border-teal-200 bg-teal-50',
+    success: 'border-green-300 bg-green-50',
+    error: 'border-red-300 bg-red-50',
+    info: 'border-teal-300 bg-teal-50',
   };
 
   return (
     <div
       className={`
-        pointer-events-auto flex items-start gap-3 p-3 rounded-xl border shadow-lg
+        pointer-events-auto flex items-center gap-3 px-5 py-4 rounded-2xl border-2 shadow-2xl
         transition-all duration-300
-        ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}
+        ${visible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-3'}
         ${bgClass[toast.type]}
       `}
     >
       {icons[toast.type]}
-      <p className="text-sm text-gray-800 flex-1">{toast.message}</p>
-      <button onClick={onClose} className="text-gray-400 hover:text-gray-600 mt-0.5">
-        <X className="w-4 h-4" />
+      <p className="text-base font-semibold text-gray-900 flex-1">{toast.message}</p>
+      <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+        <X className="w-5 h-5" />
       </button>
     </div>
   );

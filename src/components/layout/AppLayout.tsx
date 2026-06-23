@@ -46,10 +46,11 @@ export function AppLayout({ children }: AppLayoutProps) {
           </button>
           <button
             onClick={() => navigate('/dashboard')}
-            className="p-2 rounded-lg text-gray-600 hover:bg-gray-100"
-            aria-label="לוח בקרה"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-50 text-teal-700 font-semibold text-sm hover:bg-teal-100 transition-colors"
+            aria-label="חזרה לבית"
           >
-            <Home className="w-5 h-5" />
+            <Home className="w-4 h-4" />
+            בית
           </button>
         </div>
 
