@@ -89,15 +89,23 @@ export function TransfersPage() {
 
   const deleteTransfer = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from('internal_transfers').delete().eq('id', id);
+      const { data, error } = await supabase.from('internal_transfers').delete().eq('id', id).select('id');
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('NOT_DELETED');
     },
     onSuccess: () => {
       queryClient.invalidateQueries(); // refresh transfers, balances, daily summary, dashboard
       toast.success('ההעברה נמחקה');
       setConfirmDelete(null);
     },
-    onError: () => { toast.error('שגיאה במחיקת ההעברה'); setConfirmDelete(null); },
+    onError: (err: unknown) => {
+      if ((err as Error)?.message === 'NOT_DELETED') {
+        toast.error('אין הרשאת מחיקה במסד הנתונים — יש להריץ את הרשאות המחיקה (SQL)');
+      } else {
+        toast.error('שגיאה במחיקת ההעברה');
+      }
+      setConfirmDelete(null);
+    },
   });
 
   const filtered = transfers.filter(t => {
