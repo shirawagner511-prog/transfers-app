@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Plus, Search, Filter, Eye, ArrowLeftRight } from 'lucide-react';
+import { Plus, Search, Filter, Eye, ArrowLeftRight, Trash2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { InternalTransfer, TransferStatus } from '@/types/database.types';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Card } from '@/components/ui/Card';
+import { ConfirmModal } from '@/components/ui/Modal';
 import { TransferStatusBadge } from '@/components/ui/Badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageSpinner } from '@/components/ui/Spinner';
@@ -50,6 +51,7 @@ export function TransfersPage() {
   const [filterStatus, setFilterStatus] = useState<TransferStatus | ''>('');
   const [filterDept, setFilterDept] = useState('');
   const [detailId, setDetailId] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<InternalTransfer | null>(null);
 
   useEffect(() => {
     if (searchParams.get('new') === '1') {
@@ -83,6 +85,19 @@ export function TransfersPage() {
       toast.success('הסטטוס עודכן');
     },
     onError: () => toast.error('שגיאה בעדכון הסטטוס'),
+  });
+
+  const deleteTransfer = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('internal_transfers').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(); // refresh transfers, balances, daily summary, dashboard
+      toast.success('ההעברה נמחקה');
+      setConfirmDelete(null);
+    },
+    onError: () => { toast.error('שגיאה במחיקת ההעברה'); setConfirmDelete(null); },
   });
 
   const filtered = transfers.filter(t => {
@@ -223,6 +238,11 @@ export function TransfersPage() {
                           סיים
                         </Button>
                       )}
+                      {canApprove() && (
+                        <Button variant="ghost" size="sm" className="text-red-600" onClick={() => setConfirmDelete(t)} icon={<Trash2 className="w-4 h-4" />}>
+                          מחק
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -247,6 +267,17 @@ export function TransfersPage() {
         transferId={detailId}
         onClose={() => setDetailId(null)}
         onStatusChange={() => queryClient.invalidateQueries({ queryKey: ['transfers'] })}
+      />
+
+      <ConfirmModal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        onConfirm={() => confirmDelete && deleteTransfer.mutate(confirmDelete.id)}
+        title="מחיקת העברה"
+        message={`למחוק לצמיתות את העברה ${confirmDelete?.transfer_number}? היא תיעלם מכל המקומות (מאזן, סיכום יומי). לא ניתן לבטל.`}
+        confirmLabel="מחק"
+        danger
+        loading={deleteTransfer.isPending}
       />
     </div>
   );

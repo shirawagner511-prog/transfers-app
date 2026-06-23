@@ -8,6 +8,8 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { todayISO, formatTime } from '@/lib/dateUtils';
 import { useAuth } from '@/hooks/useAuth';
+import { pairwiseDebts } from '@/lib/balanceCalculations';
+import type { InternalTransfer } from '@/types/database.types';
 
 async function fetchDashboardData() {
   const today = todayISO();
@@ -35,6 +37,18 @@ export function DashboardPage() {
     queryKey: ['dashboard'],
     queryFn: fetchDashboardData,
     refetchInterval: 30000,
+  });
+
+  const { data: topDebts = [] } = useQuery({
+    queryKey: ['dashboard-debts'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('internal_transfers')
+        .select('from_department_id,to_department_id,total_value,status,from_department:departments!from_department_id(name),to_department:departments!to_department_id(name)')
+        .is('settlement_id', null);
+      if (error) throw error;
+      return pairwiseDebts(data as unknown as InternalTransfer[]);
+    },
   });
 
   if (isLoading) return <PageSpinner />;
@@ -92,6 +106,26 @@ export function DashboardPage() {
           <StatCard label="מחלקות פעילות" value={data?.activeDepts ?? 0} icon={<Building2 className="w-5 h-5" />} onClick={() => navigate('/departments')} />
         </div>
       </div>
+
+      {/* Open debts between departments */}
+      {topDebts.length > 0 && (
+        <Card>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-gray-900">חובות בין מחלקות</h2>
+            <button onClick={() => navigate('/balances')} className="text-xs text-teal-600 hover:underline">לכל המאזן →</button>
+          </div>
+          <div className="space-y-2">
+            {topDebts.slice(0, 5).map(d => (
+              <div key={`${d.debtorId}-${d.creditorId}`} className="flex items-center justify-between text-sm">
+                <span className="text-gray-700">
+                  <span className="font-medium">{d.debtorName}</span> חייב ל<span className="font-medium">{d.creditorName}</span>
+                </span>
+                <span className="font-bold text-gray-900">{formatCurrency(d.amount)}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Recent transfers today */}
       <Card>

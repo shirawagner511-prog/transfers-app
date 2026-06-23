@@ -42,6 +42,15 @@ export function TransferDetailModal({ transferId, onClose, onStatusChange }: Pro
     enabled: !!transferId,
   });
 
+  const { data: creatorName } = useQuery({
+    queryKey: ['profile-name', transfer?.created_by],
+    queryFn: async () => {
+      const { data } = await supabase.from('user_profiles').select('full_name').eq('user_id', transfer!.created_by!).maybeSingle();
+      return data?.full_name ?? null;
+    },
+    enabled: !!transfer?.created_by,
+  });
+
   const updateStatus = useMutation({
     mutationFn: async (status: InternalTransfer['status']) => {
       const update: Record<string, unknown> = { status };
@@ -109,6 +118,10 @@ export function TransferDetailModal({ transferId, onClose, onStatusChange }: Pro
             <div>
               <p className="text-gray-500 text-xs mb-0.5">למחלקה</p>
               <p className="font-medium">{transfer.to_department?.name}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-gray-500 text-xs mb-0.5">נוצר על ידי</p>
+              <p className="font-medium">{creatorName ?? '—'}</p>
             </div>
           </div>
 

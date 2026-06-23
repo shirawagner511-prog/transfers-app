@@ -41,6 +41,8 @@ drop policy if exists "suppliers_delete" on suppliers;
 create policy "suppliers_delete" on suppliers for delete to authenticated using (current_user_role() in ('admin','manager'));
 drop policy if exists "ingredients_delete" on ingredients;
 create policy "ingredients_delete" on ingredients for delete to authenticated using (current_user_role() in ('admin','manager'));
+drop policy if exists "transfers_delete" on internal_transfers;
+create policy "transfers_delete" on internal_transfers for delete to authenticated using (current_user_role() in ('admin','manager'));
 
 -- 3) Settlement / קיזוז  (per-pair and global)
 create table if not exists settlements (
