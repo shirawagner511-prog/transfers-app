@@ -100,3 +100,24 @@ begin
   return new_id;
 end; $$;
 grant execute on function settle_pair(uuid, uuid, numeric, jsonb) to authenticated;
+
+-- 4) Partial pair settlement (קיזוז חלקי)
+-- Records an amount the debtor paid the creditor WITHOUT closing any transfer.
+-- The open balance = (net from open transfers) minus these partial amounts,
+-- applied only until the next global settlement. is_partial=true marks these
+-- rows so the app subtracts them (old full pair settlements are not subtracted).
+alter table settlements add column if not exists is_partial boolean not null default false;
+
+create or replace function settle_pair_partial(p_creditor uuid, p_debtor uuid, p_amount numeric, p_snapshot jsonb)
+returns uuid language plpgsql security definer set search_path = public as $$
+declare new_id uuid;
+begin
+  if p_amount is null or p_amount <= 0 then
+    raise exception 'סכום הקיזוז חייב להיות חיובי';
+  end if;
+  insert into settlements (settled_by, department_a, department_b, amount, is_partial, snapshot)
+  values (auth.uid(), p_creditor, p_debtor, p_amount, true, p_snapshot)
+  returning id into new_id;
+  return new_id;
+end; $$;
+grant execute on function settle_pair_partial(uuid, uuid, numeric, jsonb) to authenticated;

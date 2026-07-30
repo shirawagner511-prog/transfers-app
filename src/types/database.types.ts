@@ -133,7 +133,7 @@ export interface SettlementSnapshotRow {
 export interface SettlementSnapshot {
   from?: string | null; // previous settlement timestamp this close covered from
   summary?: SettlementSnapshotRow[]; // global settlement: all balances at close time
-  pair?: { aName: string; bName: string; amount: number }; // pair settlement
+  pair?: { aName: string; bName: string; amount: number; partial?: boolean }; // pair settlement
 }
 
 export interface Settlement {
@@ -143,6 +143,7 @@ export interface Settlement {
   department_a: string | null; // null = global settlement
   department_b: string | null;
   amount: number | null;
+  is_partial: boolean;
   note: string | null;
   snapshot: SettlementSnapshot | null;
   created_at: string;

@@ -92,6 +92,31 @@ export function computeBalances(transfers: InternalTransfer[]): BalanceResult {
   return { summary, details };
 }
 
+export interface PairSettlement {
+  creditor_id: string;
+  creditor_name: string;
+  debtor_id: string;
+  debtor_name: string;
+  amount: number;
+}
+
+/**
+ * Turn partial settlements into synthetic "repayment" transfers (debtor → creditor).
+ * Feeding these alongside the real open transfers into computeBalances / pairwiseDebts
+ * nets the debtor's open debt down by the settled amount, without touching any real
+ * transfer record. A full settlement is simply a repayment equal to the whole debt.
+ */
+export function settlementTransfers(settlements: PairSettlement[]): InternalTransfer[] {
+  return settlements.map(s => ({
+    status: 'approved',
+    from_department_id: s.debtor_id,
+    to_department_id: s.creditor_id,
+    from_department: { id: s.debtor_id, name: s.debtor_name },
+    to_department: { id: s.creditor_id, name: s.creditor_name },
+    total_value: s.amount,
+  }) as unknown as InternalTransfer);
+}
+
 export interface PairDebt {
   debtorId: string;
   debtorName: string;

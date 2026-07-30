@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase';
 import type { InternalTransfer, Settlement } from '@/types/database.types';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
-import { ConfirmModal } from '@/components/ui/Modal';
+import { ConfirmModal, Modal } from '@/components/ui/Modal';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { useToast } from '@/components/ui/Toast';
 import { BalanceTable, type SettlePair } from '@/components/BalanceTable';
@@ -13,7 +13,8 @@ import { formatCurrency } from '@/lib/formatCurrency';
 import {
   type PeriodType, todayISO, periodRange, periodLabel, shiftPeriod, formatDate, formatDateTime,
 } from '@/lib/dateUtils';
-import { computeBalances, pairwiseDebts } from '@/lib/balanceCalculations';
+import { computeBalances, pairwiseDebts, settlementTransfers } from '@/lib/balanceCalculations';
+import { fetchActivePartialSettlements } from '@/lib/settlements';
 import { ExportButton } from '@/components/ui/ExportButton';
 import type { DepartmentBalanceRow } from '@/lib/balanceCalculations';
 
@@ -45,6 +46,12 @@ export function BalancesPage() {
   const [anchor, setAnchor] = useState(todayISO());
   const [confirmSettle, setConfirmSettle] = useState(false);
   const [pendingPair, setPendingPair] = useState<SettlePair | null>(null);
+  const [settleAmount, setSettleAmount] = useState('');
+
+  function openSettlePair(pair: SettlePair) {
+    setPendingPair(pair);
+    setSettleAmount(String(pair.amount));
+  }
 
   // --- Open (unsettled) balance ---
   const { data: openTransfers = [], isLoading: openLoading } = useQuery({
@@ -65,12 +72,19 @@ export function BalancesPage() {
       const { data, error } = await supabase
         .from('settlements')
         .select('*')
+        .is('department_a', null) // last GLOBAL settlement (resets everything)
         .order('settled_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       if (error) throw error;
       return data as Settlement | null;
     },
+  });
+
+  // Partial pair settlements still in effect (since the last global settlement).
+  const { data: activePartials = [] } = useQuery({
+    queryKey: ['partial-settlements'],
+    queryFn: fetchActivePartialSettlements,
   });
 
   // --- Period browse ---
@@ -103,9 +117,11 @@ export function BalancesPage() {
     enabled: mode === 'history',
   });
 
-  const openResult = computeBalances(openTransfers);
+  // Open transfers plus synthetic repayments for partial settlements already made.
+  const openWithSettlements = [...openTransfers, ...settlementTransfers(activePartials)];
+  const openResult = computeBalances(openWithSettlements);
   const periodResult = computeBalances(periodTransfers);
-  const openDebts = pairwiseDebts(openTransfers);
+  const openDebts = pairwiseDebts(openWithSettlements);
 
   const settle = useMutation({
     mutationFn: async () => {
@@ -124,21 +140,28 @@ export function BalancesPage() {
   });
 
   const settlePair = useMutation({
-    mutationFn: async (pair: SettlePair) => {
-      const snapshot = { pair: { aName: pair.aName, bName: pair.bName, amount: pair.amount } };
-      const { error } = await supabase.rpc('settle_pair', {
-        p_dept_a: pair.aId, p_dept_b: pair.bId, p_amount: pair.amount, p_snapshot: snapshot,
+    mutationFn: async ({ pair, amount }: { pair: SettlePair; amount: number }) => {
+      const snapshot = {
+        pair: { aName: pair.aName, bName: pair.bName, amount, partial: amount < pair.amount },
+      };
+      const { error } = await supabase.rpc('settle_pair_partial', {
+        p_creditor: pair.aId, p_debtor: pair.bId, p_amount: amount, p_snapshot: snapshot,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['balances-open'] });
+      queryClient.invalidateQueries({ queryKey: ['partial-settlements'] });
       queryClient.invalidateQueries({ queryKey: ['settlements'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard-debts'] });
       toast.success('הקיזוז בוצע');
       setPendingPair(null);
     },
     onError: () => toast.error('שגיאה בביצוע הקיזוז'),
   });
+
+  const settleValue = Number(settleAmount);
+  const settleValid = pendingPair != null && settleValue > 0 && settleValue <= pendingPair.amount + 0.001;
 
   const tabBase = 'px-4 py-1.5 text-sm font-medium rounded-md transition-colors';
   const tabOn = 'bg-white text-teal-600 shadow-sm';
@@ -206,7 +229,7 @@ export function BalancesPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => setPendingPair({ aId: d.creditorId, aName: d.creditorName, bId: d.debtorId, bName: d.debtorName, amount: d.amount })}
+                          onClick={() => openSettlePair({ aId: d.creditorId, aName: d.creditorName, bId: d.debtorId, bName: d.debtorName, amount: d.amount })}
                         >
                           קזז
                         </Button>
@@ -296,18 +319,75 @@ export function BalancesPage() {
         loading={settle.isPending}
       />
 
-      <ConfirmModal
+      <Modal
         open={!!pendingPair}
         onClose={() => setPendingPair(null)}
-        onConfirm={() => { if (pendingPair) settlePair.mutate(pendingPair); }}
         title="קיזוז בין מחלקות"
-        message={pendingPair
-          ? `לקזז את היתרה בין ${pendingPair.aName} ל${pendingPair.bName} (${formatCurrency(pendingPair.amount)})? ההעברות בין שתי המחלקות ייסגרו. לא ניתן לבטל.`
-          : ''}
-        confirmLabel="בצע קיזוז"
-        danger
-        loading={settlePair.isPending}
-      />
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setPendingPair(null)} disabled={settlePair.isPending}>ביטול</Button>
+            <Button
+              variant="primary"
+              onClick={() => { if (pendingPair && settleValid) settlePair.mutate({ pair: pendingPair, amount: settleValue }); }}
+              loading={settlePair.isPending}
+              disabled={!settleValid}
+            >
+              בצע קיזוז
+            </Button>
+          </>
+        }
+      >
+        {pendingPair && (
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              <span className="font-medium">{pendingPair.bName}</span> חייב ל<span className="font-medium">{pendingPair.aName}</span>{' '}
+              <span className="font-bold text-gray-900">{formatCurrency(pendingPair.amount)}</span>
+            </p>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">סכום לקיזוז</label>
+              <input
+                type="number"
+                inputMode="decimal"
+                min={0}
+                max={pendingPair.amount}
+                step="0.01"
+                value={settleAmount}
+                onChange={e => setSettleAmount(e.target.value)}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
+              />
+              <div className="flex gap-2 mt-2">
+                <button
+                  type="button"
+                  onClick={() => setSettleAmount(String(Math.round((pendingPair.amount / 2) * 100) / 100))}
+                  className="px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200"
+                >
+                  חצי
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSettleAmount(String(pendingPair.amount))}
+                  className="px-2.5 py-1 text-xs rounded-md bg-gray-100 text-gray-600 hover:bg-gray-200"
+                >
+                  הכל
+                </button>
+              </div>
+            </div>
+
+            {settleValue > pendingPair.amount + 0.001 ? (
+              <p className="text-xs text-red-600">הסכום גדול מהחוב הפתוח ({formatCurrency(pendingPair.amount)}).</p>
+            ) : settleValid ? (
+              <p className="text-xs text-gray-500">
+                ייסגר {formatCurrency(settleValue)}
+                {settleValue < pendingPair.amount && <> · ישאר פתוח {formatCurrency(pendingPair.amount - settleValue)}</>}. לא ניתן לבטל.
+              </p>
+            ) : (
+              <p className="text-xs text-gray-400">הזיני סכום גדול מ-0.</p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -326,7 +406,10 @@ function SettlementCard({ settlement }: { settlement: Settlement }) {
               <CheckCircle2 className="w-4 h-4" />
             </div>
             <div className="text-right">
-              <p className="font-semibold text-gray-900">קיזוז: {pair.aName} ↔ {pair.bName}</p>
+              <p className="font-semibold text-gray-900">
+                קיזוז: {pair.aName} ↔ {pair.bName}
+                {pair.partial && <span className="mr-1.5 text-xs font-medium text-amber-600">(חלקי)</span>}
+              </p>
               <p className="text-xs text-gray-500">{formatDateTime(settlement.settled_at)}</p>
             </div>
           </div>

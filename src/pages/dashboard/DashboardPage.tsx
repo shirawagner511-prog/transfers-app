@@ -8,7 +8,8 @@ import { PageSpinner } from '@/components/ui/Spinner';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { todayISO, formatTime } from '@/lib/dateUtils';
 import { useAuth } from '@/hooks/useAuth';
-import { pairwiseDebts } from '@/lib/balanceCalculations';
+import { pairwiseDebts, settlementTransfers } from '@/lib/balanceCalculations';
+import { fetchActivePartialSettlements } from '@/lib/settlements';
 import type { InternalTransfer } from '@/types/database.types';
 
 async function fetchDashboardData() {
@@ -42,12 +43,16 @@ export function DashboardPage() {
   const { data: topDebts = [] } = useQuery({
     queryKey: ['dashboard-debts'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('internal_transfers')
-        .select('from_department_id,to_department_id,total_value,status,from_department:departments!from_department_id(name),to_department:departments!to_department_id(name)')
-        .is('settlement_id', null);
+      const [{ data, error }, partials] = await Promise.all([
+        supabase
+          .from('internal_transfers')
+          .select('from_department_id,to_department_id,total_value,status,from_department:departments!from_department_id(name),to_department:departments!to_department_id(name)')
+          .is('settlement_id', null),
+        fetchActivePartialSettlements(),
+      ]);
       if (error) throw error;
-      return pairwiseDebts(data as unknown as InternalTransfer[]);
+      const transfers = [...(data as unknown as InternalTransfer[]), ...settlementTransfers(partials)];
+      return pairwiseDebts(transfers);
     },
   });
 
