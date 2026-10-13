@@ -73,14 +73,14 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
   const { data: products = [] } = useQuery({
     queryKey: ['products-active'],
     queryFn: () => fetchAll<Product>((from, to) =>
-      supabase.from('products').select('id,name,category,internal_transfer_price').eq('is_active', true).order('name').range(from, to)),
+      supabase.from('products').select('id,name,category,internal_transfer_price').eq('is_active', true).order('name').order('id').range(from, to)),
     enabled: open,
   });
 
   const { data: ingredients = [] } = useQuery({
     queryKey: ['ingredients-active'],
     queryFn: () => fetchAll<Ingredient>((from, to) =>
-      supabase.from('ingredients').select('id,name,unit,category,current_price,supplier:suppliers(id,name)').eq('is_active', true).order('name').range(from, to)),
+      supabase.from('ingredients').select('id,name,unit,category,current_price,supplier:suppliers(id,name)').eq('is_active', true).order('name').order('id').range(from, to)),
     enabled: open,
   });
 

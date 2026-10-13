@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -57,6 +58,7 @@ function fetchProducts() {
     .from('products')
     .select('*, product_ingredients(*, ingredient:ingredients(*))')
     .order('name')
+    .order('id')
     .range(from, to));
 }
 
@@ -66,6 +68,7 @@ function fetchIngredients() {
     .select('id,name,unit,category,current_price,supplier:suppliers(id,name)')
     .eq('is_active', true)
     .order('name')
+    .order('id')
     .range(from, to));
 }
 
@@ -323,6 +326,16 @@ export function ProductsPage() {
           </Select>
         </div>
       </Card>
+
+      {view === 'active' && search.trim() && (() => {
+        const n = searchItems(allIngredients, search, i => `${i.name} ${i.category ?? ''} ${i.supplier?.name ?? ''}`, Infinity).length;
+        return n > 0 ? (
+          <div className="mb-4 text-sm bg-teal-50 text-teal-800 rounded-lg px-3 py-2">
+            נמצאו גם <strong>{n}</strong> פריטים במחירון הרכש (מרכיבים) עבור "{search.trim()}" —{' '}
+            <Link to={`/ingredients?q=${encodeURIComponent(search.trim())}`} className="font-semibold underline">הצג במרכיבים</Link>
+          </div>
+        ) : null;
+      })()}
 
       {filtered.length === 0 ? (
         <EmptyState
