@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeftRight, Clock, CalendarDays, Plus, Scale, Wheat, Package, Truck } from 'lucide-react';
+import { ArrowLeftRight, Clock, CalendarDays, Plus, Scale, Package, Truck } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Card, StatCard } from '@/components/ui/Card';
 import { TransferStatusBadge } from '@/components/ui/Badge';
@@ -64,8 +64,7 @@ export function DashboardPage() {
     { label: 'העברה חדשה', icon: Plus, to: '/transfers?new=1', primary: true, show: canEdit() },
     { label: 'מאזן בין מחלקות', icon: Scale, to: '/balances', show: true },
     { label: 'סיכום יומי', icon: CalendarDays, to: '/daily-summary', show: true },
-    { label: 'מרכיבים', icon: Wheat, to: '/ingredients', show: true },
-    { label: 'מוצרים', icon: Package, to: '/products', show: true },
+    { label: 'פריטים', icon: Package, to: '/items', show: true },
     { label: 'ספקים', icon: Truck, to: '/suppliers', show: true },
   ].filter(a => a.show);
 
