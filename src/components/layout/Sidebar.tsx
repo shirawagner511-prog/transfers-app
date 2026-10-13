@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, ArrowLeftRight, Package,
-  Wheat, Truck, Building2, ShoppingBag, Settings, LogOut, ChefHat, Scale,
+  Truck, Building2, ShoppingBag, Settings, LogOut, ChefHat, Scale,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -17,8 +17,7 @@ const navItems: NavItem[] = [
   { to: '/daily-summary', label: 'סיכום יומי', icon: <CalendarDays className="w-5 h-5" /> },
   { to: '/transfers', label: 'העברות פנימיות', icon: <ArrowLeftRight className="w-5 h-5" /> },
   { to: '/balances', label: 'מאזן בין מחלקות', icon: <Scale className="w-5 h-5" /> },
-  { to: '/ingredients', label: 'מרכיבים', icon: <Wheat className="w-5 h-5" /> },
-  { to: '/products', label: 'מוצרים / מנות', icon: <Package className="w-5 h-5" /> },
+  { to: '/items', label: 'פריטים', icon: <Package className="w-5 h-5" /> },
   { to: '/suppliers', label: 'ספקים', icon: <Truck className="w-5 h-5" /> },
   { to: '/departments', label: 'מחלקות', icon: <Building2 className="w-5 h-5" /> },
   { to: '/orders', label: 'הזמנות / אירועים', icon: <ShoppingBag className="w-5 h-5" /> },

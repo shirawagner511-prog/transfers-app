@@ -3,7 +3,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Trash2 } from 'lucide-react';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
@@ -15,9 +15,8 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { todayISO, nowTimeISO } from '@/lib/dateUtils';
 import { transferItemTotal } from '@/lib/transferCalculations';
-import { fetchAll } from '@/lib/fetchAll';
+import { useItems } from '@/hooks/useItems';
 import { ItemSearch, type SearchOption } from '@/components/ItemSearch';
-import type { Product, Ingredient } from '@/types/database.types';
 
 const itemSchema = z.object({
   type: z.enum(['product', 'ingredient']),
@@ -70,19 +69,8 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
   const toast = useToast();
   const [pendingDup, setPendingDup] = useState<FormData | null>(null);
 
-  const { data: products = [] } = useQuery({
-    queryKey: ['products-active'],
-    queryFn: () => fetchAll<Product>((from, to) =>
-      supabase.from('products').select('id,name,category,internal_transfer_price').eq('is_active', true).order('name').order('id').range(from, to)),
-    enabled: open,
-  });
-
-  const { data: ingredients = [] } = useQuery({
-    queryKey: ['ingredients-active'],
-    queryFn: () => fetchAll<Ingredient>((from, to) =>
-      supabase.from('ingredients').select('id,name,unit,category,current_price,supplier:suppliers(id,name)').eq('is_active', true).order('name').order('id').range(from, to)),
-    enabled: open,
-  });
+  const { data: allItems = [], isLoading: itemsLoading, error: itemsError } = useItems(open);
+  const items = useMemo(() => allItems.filter(i => i.is_active), [allItems]);
 
   const { register, handleSubmit, reset, watch, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
@@ -124,9 +112,7 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
       if (tErr) throw tErr;
 
       const rows = data.items.map(item => {
-        const name = item.name || (item.type === 'product'
-          ? products.find(p => p.id === item.product_id)?.name
-          : ingredients.find(i => i.id === item.ingredient_id)?.name) || '';
+        const name = item.name || items.find(i => i.key === keyOf(item))?.name || '';
         return {
           transfer_id: transfer.id,
           product_id: item.type === 'product' ? item.product_id ?? null : null,
@@ -172,42 +158,31 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
     save.mutate(payload);
   }
 
-  // One search across products (מנות) and ingredients (מחירון רכש)
-  const searchOptions = useMemo<SearchOption[]>(() => [
-    ...products.map(p => ({
-      id: `p:${p.id}`,
-      name: p.name,
-      keywords: `${p.category ?? ''} מוצר`,
-      badge: <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 flex-shrink-0">מוצר</span>,
-      meta: p.category ?? undefined,
-      price: formatCurrency(p.internal_transfer_price),
-    })),
-    ...ingredients.map(i => ({
-      id: `i:${i.id}`,
-      name: i.name,
-      keywords: `${i.category ?? ''} ${i.supplier?.name ?? ''}`,
-      meta: [i.supplier?.name, i.category].filter(Boolean).join(' · ') || undefined,
-      price: <>{formatCurrency(i.current_price)}<span className="text-xs font-normal text-gray-500"> / {i.unit}</span></>,
-    })),
-  ], [products, ingredients]);
+  // One search over every item (price list + dishes)
+  const searchOptions = useMemo<SearchOption[]>(() => items.map(i => ({
+    id: i.key,
+    name: i.name,
+    keywords: `${i.category ?? ''} ${i.supplier_name ?? ''}`,
+    meta: [i.supplier_name, i.category].filter(Boolean).join(' · ') || undefined,
+    price: <>{formatCurrency(i.price)}<span className="text-xs font-normal text-gray-500"> / {i.unit}</span></>,
+  })), [items]);
 
-  const selectedIds = new Set(watchedItems.map(it => it.type === 'product' ? `p:${it.product_id}` : `i:${it.ingredient_id}`));
+  const keyOf = (it: FormData['items'][number]) => it.type === 'product' ? `product:${it.product_id}` : `ingredient:${it.ingredient_id}`;
+  const selectedIds = new Set(watchedItems.map(keyOf));
 
   function addFromSearch(option: SearchOption) {
-    const [kind, id] = [option.id.slice(0, 1), option.id.slice(2)];
     if (selectedIds.has(option.id)) {
       toast.info(`"${option.name}" כבר ברשימה — עדכן את הכמות בשורה`);
       return;
     }
-    if (kind === 'p') {
-      const p = products.find(x => x.id === id);
-      if (!p) return;
-      append({ type: 'product', product_id: p.id, name: p.name, quantity: 1, unit: 'יחידה', unit_price: p.internal_transfer_price, notes: '' });
-    } else {
-      const i = ingredients.find(x => x.id === id);
-      if (!i) return;
-      append({ type: 'ingredient', ingredient_id: i.id, name: i.name, quantity: 1, unit: i.unit, unit_price: i.current_price, notes: '' });
-    }
+    const i = items.find(x => x.key === option.id);
+    if (!i) return;
+    append({
+      type: i.source,
+      product_id: i.source === 'product' ? i.id : undefined,
+      ingredient_id: i.source === 'ingredient' ? i.id : undefined,
+      name: i.name, quantity: 1, unit: i.unit, unit_price: i.price, notes: '',
+    });
   }
 
   return (
@@ -266,9 +241,13 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
             options={searchOptions}
             onSelect={addFromSearch}
             selectedIds={selectedIds}
-            placeholder="חפש מוצר או מרכיב להוספה (שם, ספק או קטגוריה)…"
+            placeholder={itemsLoading ? 'טוען פריטים…' : `חפש פריט להוספה (מתוך ${items.length.toLocaleString('he-IL')} פריטים)…`}
           />
-          <p className="text-[11px] text-gray-400 mt-1">הקלד כמה אותיות ובחר — המחיר והיחידה ממולאים אוטומטית. אפשר לחפש כמה מילים יחד, למשל "שרי תמר".</p>
+          {itemsError ? (
+            <p className="text-xs text-red-600 mt-1">שגיאה בטעינת הפריטים: {(itemsError as { message?: string }).message}</p>
+          ) : (
+            <p className="text-[11px] text-gray-400 mt-1">הקלד חלק מהשם, מילה מתוכו או שם ספק — המחיר והיחידה ממולאים אוטומטית.</p>
+          )}
 
           {errors.items?.root && (
             <p className="text-xs text-red-500 mt-2">{errors.items.root.message}</p>
@@ -280,16 +259,10 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
           <div className="space-y-2 mt-3">
             {fields.map((field, idx) => {
               const item = watchedItems[idx];
-              const isProduct = item?.type === 'product';
               return (
                 <div key={field.id} className="p-2.5 bg-gray-50 rounded-lg">
                   <div className="flex items-center justify-between gap-2 mb-2">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${isProduct ? 'bg-teal-100 text-teal-700' : 'bg-gray-200 text-gray-600'}`}>
-                        {isProduct ? 'מוצר' : 'מרכיב'}
-                      </span>
-                      <span className="text-sm font-medium text-gray-900 truncate">{item?.name}</span>
-                    </div>
+                    <span className="text-sm font-medium text-gray-900 truncate">{item?.name}</span>
                     <button type="button" onClick={() => remove(idx)} className="p-1 text-red-400 hover:text-red-600 flex-shrink-0" aria-label="הסר פריט">
                       <Trash2 className="w-4 h-4" />
                     </button>

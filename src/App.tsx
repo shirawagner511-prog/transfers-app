@@ -8,8 +8,7 @@ import { SignupPage } from './pages/auth/SignupPage';
 import { DashboardPage } from './pages/dashboard/DashboardPage';
 import { DailySummaryPage } from './pages/daily-summary/DailySummaryPage';
 import { TransfersPage } from './pages/transfers/TransfersPage';
-import { IngredientsPage } from './pages/ingredients/IngredientsPage';
-import { ProductsPage } from './pages/products/ProductsPage';
+import { ItemsPage } from './pages/items/ItemsPage';
 import { SuppliersPage } from './pages/suppliers/SuppliersPage';
 import { DepartmentsPage } from './pages/departments/DepartmentsPage';
 import { OrdersPage } from './pages/orders/OrdersPage';
@@ -53,8 +52,9 @@ function AppRoutes() {
                 <Route path="/dashboard" element={<DashboardPage />} />
                 <Route path="/daily-summary" element={<DailySummaryPage />} />
                 <Route path="/transfers" element={<TransfersPage />} />
-                <Route path="/ingredients" element={<IngredientsPage />} />
-                <Route path="/products" element={<ProductsPage />} />
+                <Route path="/items" element={<ItemsPage />} />
+                <Route path="/ingredients" element={<Navigate to="/items" replace />} />
+                <Route path="/products" element={<Navigate to="/items" replace />} />
                 <Route path="/suppliers" element={<SuppliersPage />} />
                 <Route path="/departments" element={<DepartmentsPage />} />
                 <Route path="/orders" element={<OrdersPage />} />
