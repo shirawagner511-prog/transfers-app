@@ -1,17 +1,21 @@
 import type { PostgrestError } from '@supabase/supabase-js';
 
-// Supabase returns at most 1000 rows per request. The price list has well over
-// that, so page through with .range() until a short page comes back.
+// Supabase caps every response (1000 rows by default, sometimes less), and the
+// price list is bigger than that. Keep asking for the next slice until an empty
+// one comes back, so whatever the server's cap is, nothing gets cut off.
+// Callers must add a unique tiebreaker to the order (e.g. .order('id')) so
+// rows don't shift between pages.
 const PAGE = 1000;
 
 export async function fetchAll<T>(
   page: (from: number, to: number) => PromiseLike<{ data: unknown[] | null; error: PostgrestError | null }>,
 ): Promise<T[]> {
   const all: T[] = [];
-  for (let from = 0; ; from += PAGE) {
+  for (;;) {
+    const from = all.length;
     const { data, error } = await page(from, from + PAGE - 1);
     if (error) throw error;
-    all.push(...((data ?? []) as T[]));
-    if (!data || data.length < PAGE) return all;
+    if (!data || data.length === 0) return all;
+    all.push(...(data as T[]));
   }
 }

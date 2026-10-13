@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,11 +54,12 @@ function fetchIngredients() {
     .from('ingredients')
     .select('*, supplier:suppliers(id,name)')
     .order('name')
+    .order('id')
     .range(from, to));
 }
 
 function fetchSuppliers() {
-  return fetchAll<Supplier>((from, to) => supabase.from('suppliers').select('id,name').order('name').range(from, to));
+  return fetchAll<Supplier>((from, to) => supabase.from('suppliers').select('id,name').order('name').order('id').range(from, to));
 }
 
 async function fetchPriceHistory(ingredientId: string) {
@@ -75,7 +77,8 @@ export function IngredientsPage() {
   const toast = useToast();
   const queryClient = useQueryClient();
 
-  const [search, setSearch] = useState('');
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get('q') ?? '');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterSupplier, setFilterSupplier] = useState('');
   const [filterUnit, setFilterUnit] = useState('');
