@@ -8,8 +8,9 @@
 
 1. פתח חשבון ב-https://supabase.com וצור פרויקט חדש.
 2. בלוח הבקרה: **SQL Editor** → הדבק ורץ את `supabase/migration.sql`
-3. יצור משתמש ראשון: **Authentication → Users → Add user**
-4. עדכן הרשאה ל-admin:
+3. (אופציונלי) מחירון רכש: הרץ את `supabase/prices_import.sql` — טוען ~1,600 מרכיבים עם מחיר הרכש האחרון, ספק וקטגוריה. בטוח להריץ שוב.
+4. יצור משתמש ראשון: **Authentication → Users → Add user**
+5. עדכן הרשאה ל-admin:
    ```sql
    update user_profiles set role = 'admin' where user_id = '<user-id>';
    ```

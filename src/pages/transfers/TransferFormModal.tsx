@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
@@ -15,12 +15,15 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { todayISO, nowTimeISO } from '@/lib/dateUtils';
 import { transferItemTotal } from '@/lib/transferCalculations';
+import { fetchAll } from '@/lib/fetchAll';
+import { ItemSearch, type SearchOption } from '@/components/ItemSearch';
 import type { Product, Ingredient } from '@/types/database.types';
 
 const itemSchema = z.object({
   type: z.enum(['product', 'ingredient']),
   product_id: z.string().optional(),
   ingredient_id: z.string().optional(),
+  name: z.string().optional(),
   quantity: z.number().positive('כמות חייבת להיות חיובית'),
   unit: z.string().min(1, 'יחידה נדרשת'),
   unit_price: z.number().min(0),
@@ -41,6 +44,8 @@ const schema = z.object({
 });
 
 type FormData = z.infer<typeof schema>;
+
+const UNITS = ['יחידה', 'ק"ג', 'גרם', 'ליטר', 'מ"ל', 'חבילה', 'קרטון', 'צרור'];
 
 interface Props {
   open: boolean;
@@ -63,30 +68,23 @@ function generateTransferNumber(): string {
 export function TransferFormModal({ open, onClose, departments, onSuccess }: Props) {
   const { user } = useAuth();
   const toast = useToast();
-  const [itemType, setItemType] = useState<'product' | 'ingredient'>('product');
   const [pendingDup, setPendingDup] = useState<FormData | null>(null);
 
   const { data: products = [] } = useQuery({
     queryKey: ['products-active'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('products').select('id,name,internal_transfer_price').eq('is_active', true).order('name');
-      if (error) throw error;
-      return data as Product[];
-    },
+    queryFn: () => fetchAll<Product>((from, to) =>
+      supabase.from('products').select('id,name,category,internal_transfer_price').eq('is_active', true).order('name').range(from, to)),
     enabled: open,
   });
 
   const { data: ingredients = [] } = useQuery({
     queryKey: ['ingredients-active'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('ingredients').select('id,name,unit,current_price').eq('is_active', true).order('name');
-      if (error) throw error;
-      return data as Ingredient[];
-    },
+    queryFn: () => fetchAll<Ingredient>((from, to) =>
+      supabase.from('ingredients').select('id,name,unit,category,current_price,supplier:suppliers(id,name)').eq('is_active', true).order('name').range(from, to)),
     enabled: open,
   });
 
-  const { register, handleSubmit, reset, watch, control, setValue, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, reset, watch, control, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       transfer_date: todayISO(),
@@ -126,12 +124,9 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
       if (tErr) throw tErr;
 
       const rows = data.items.map(item => {
-        let name = '';
-        if (item.type === 'product') {
-          name = products.find(p => p.id === item.product_id)?.name ?? '';
-        } else {
-          name = ingredients.find(i => i.id === item.ingredient_id)?.name ?? '';
-        }
+        const name = item.name || (item.type === 'product'
+          ? products.find(p => p.id === item.product_id)?.name
+          : ingredients.find(i => i.id === item.ingredient_id)?.name) || '';
         return {
           transfer_id: transfer.id,
           product_id: item.type === 'product' ? item.product_id ?? null : null,
@@ -177,26 +172,41 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
     save.mutate(payload);
   }
 
-  function addItem() {
-    if (itemType === 'product') {
-      append({ type: 'product', product_id: '', quantity: 1, unit: 'יחידה', unit_price: 0, notes: '' });
+  // One search across products (מנות) and ingredients (מחירון רכש)
+  const searchOptions = useMemo<SearchOption[]>(() => [
+    ...products.map(p => ({
+      id: `p:${p.id}`,
+      name: p.name,
+      keywords: `${p.category ?? ''} מוצר`,
+      badge: <span className="text-[10px] px-1.5 py-0.5 rounded bg-teal-100 text-teal-700 flex-shrink-0">מוצר</span>,
+      meta: p.category ?? undefined,
+      price: formatCurrency(p.internal_transfer_price),
+    })),
+    ...ingredients.map(i => ({
+      id: `i:${i.id}`,
+      name: i.name,
+      keywords: `${i.category ?? ''} ${i.supplier?.name ?? ''}`,
+      meta: [i.supplier?.name, i.category].filter(Boolean).join(' · ') || undefined,
+      price: <>{formatCurrency(i.current_price)}<span className="text-xs font-normal text-gray-500"> / {i.unit}</span></>,
+    })),
+  ], [products, ingredients]);
+
+  const selectedIds = new Set(watchedItems.map(it => it.type === 'product' ? `p:${it.product_id}` : `i:${it.ingredient_id}`));
+
+  function addFromSearch(option: SearchOption) {
+    const [kind, id] = [option.id.slice(0, 1), option.id.slice(2)];
+    if (selectedIds.has(option.id)) {
+      toast.info(`"${option.name}" כבר ברשימה — עדכן את הכמות בשורה`);
+      return;
+    }
+    if (kind === 'p') {
+      const p = products.find(x => x.id === id);
+      if (!p) return;
+      append({ type: 'product', product_id: p.id, name: p.name, quantity: 1, unit: 'יחידה', unit_price: p.internal_transfer_price, notes: '' });
     } else {
-      append({ type: 'ingredient', ingredient_id: '', quantity: 1, unit: 'ק"ג', unit_price: 0, notes: '' });
-    }
-  }
-
-  function handleProductChange(idx: number, productId: string) {
-    const product = products.find(p => p.id === productId);
-    if (product) {
-      setValue(`items.${idx}.unit_price`, product.internal_transfer_price);
-    }
-  }
-
-  function handleIngredientChange(idx: number, ingredientId: string) {
-    const ing = ingredients.find(i => i.id === ingredientId);
-    if (ing) {
-      setValue(`items.${idx}.unit`, ing.unit);
-      setValue(`items.${idx}.unit_price`, ing.current_price);
+      const i = ingredients.find(x => x.id === id);
+      if (!i) return;
+      append({ type: 'ingredient', ingredient_id: i.id, name: i.name, quantity: 1, unit: i.unit, unit_price: i.current_price, notes: '' });
     }
   }
 
@@ -247,89 +257,64 @@ export function TransferFormModal({ open, onClose, departments, onSuccess }: Pro
 
         {/* Items */}
         <div>
-          <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-gray-700">פריטים להעברה</p>
-            <div className="flex items-center gap-2">
-              <select
-                value={itemType}
-                onChange={e => setItemType(e.target.value as 'product' | 'ingredient')}
-                className="text-sm border border-gray-300 rounded-lg px-2 py-1.5"
-              >
-                <option value="product">מוצר</option>
-                <option value="ingredient">מרכיב</option>
-              </select>
-              <Button type="button" variant="outline" size="sm" icon={<Plus className="w-3.5 h-3.5" />} onClick={addItem}>
-                הוסף פריט
-              </Button>
-            </div>
+            {fields.length > 0 && <span className="text-xs text-gray-500">{fields.length} פריטים</span>}
           </div>
 
+          <ItemSearch
+            options={searchOptions}
+            onSelect={addFromSearch}
+            selectedIds={selectedIds}
+            placeholder="חפש מוצר או מרכיב להוספה (שם, ספק או קטגוריה)…"
+          />
+          <p className="text-[11px] text-gray-400 mt-1">הקלד כמה אותיות ובחר — המחיר והיחידה ממולאים אוטומטית. אפשר לחפש כמה מילים יחד, למשל "שרי תמר".</p>
+
           {errors.items?.root && (
-            <p className="text-xs text-red-500 mb-2">{errors.items.root.message}</p>
+            <p className="text-xs text-red-500 mt-2">{errors.items.root.message}</p>
           )}
           {typeof errors.items?.message === 'string' && (
-            <p className="text-xs text-red-500 mb-2">{errors.items.message}</p>
+            <p className="text-xs text-red-500 mt-2">{errors.items.message}</p>
           )}
 
-          <div className="space-y-2">
+          <div className="space-y-2 mt-3">
             {fields.map((field, idx) => {
-              const type = watchedItems[idx]?.type ?? 'product';
+              const item = watchedItems[idx];
+              const isProduct = item?.type === 'product';
               return (
-                <div key={field.id} className="grid grid-cols-12 gap-2 p-3 bg-gray-50 rounded-lg items-end">
-                  <div className="col-span-4">
-                    {type === 'product' ? (
-                      <Select
-                        label={idx === 0 ? 'מוצר' : undefined}
-                        placeholder="בחר מוצר"
-                        {...register(`items.${idx}.product_id`, {
-                          onChange: e => handleProductChange(idx, e.target.value),
-                        })}
-                      >
-                        {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </Select>
-                    ) : (
-                      <Select
-                        label={idx === 0 ? 'מרכיב' : undefined}
-                        placeholder="בחר מרכיב"
-                        {...register(`items.${idx}.ingredient_id`, {
-                          onChange: e => handleIngredientChange(idx, e.target.value),
-                        })}
-                      >
-                        {ingredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                      </Select>
-                    )}
+                <div key={field.id} className="p-2.5 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded flex-shrink-0 ${isProduct ? 'bg-teal-100 text-teal-700' : 'bg-gray-200 text-gray-600'}`}>
+                        {isProduct ? 'מוצר' : 'מרכיב'}
+                      </span>
+                      <span className="text-sm font-medium text-gray-900 truncate">{item?.name}</span>
+                    </div>
+                    <button type="button" onClick={() => remove(idx)} className="p-1 text-red-400 hover:text-red-600 flex-shrink-0" aria-label="הסר פריט">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div className="col-span-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 items-end">
                     <Input
-                      label={idx === 0 ? 'כמות' : undefined}
-                      type="number" step="0.001"
+                      label="כמות"
+                      type="number" step="0.001" inputMode="decimal"
                       error={errors.items?.[idx]?.quantity?.message}
                       {...register(`items.${idx}.quantity`, { valueAsNumber: true })}
                     />
-                  </div>
-                  <div className="col-span-2">
-                    <Select label={idx === 0 ? 'יחידה' : undefined} {...register(`items.${idx}.unit`)}>
-                      {['יחידה', 'ק"ג', 'גרם', 'ליטר', 'מ"ל', 'חבילה', 'צרור'].map(u => <option key={u} value={u}>{u}</option>)}
+                    <Select label="יחידה" {...register(`items.${idx}.unit`)}>
+                      {Array.from(new Set([item?.unit, ...UNITS].filter(Boolean) as string[])).map(u => <option key={u} value={u}>{u}</option>)}
                     </Select>
-                  </div>
-                  <div className="col-span-2">
                     <Input
-                      label={idx === 0 ? 'מחיר ליח׳ (₪)' : undefined}
-                      type="number" step="0.01"
+                      label="מחיר ליח׳ (₪)"
+                      type="number" step="0.01" inputMode="decimal"
                       {...register(`items.${idx}.unit_price`, { valueAsNumber: true })}
                     />
-                  </div>
-                  <div className="col-span-1 flex justify-center items-end pb-0.5">
-                    {watchedItems[idx] && (
-                      <span className="text-xs text-gray-600 font-medium">
-                        {formatCurrency(transferItemTotal(watchedItems[idx].quantity || 0, watchedItems[idx].unit_price || 0))}
+                    <div className="col-span-3 sm:col-span-1 text-left sm:text-center pb-2">
+                      <span className="text-xs text-gray-500 sm:block">סה"כ: </span>
+                      <span className="text-sm font-semibold text-gray-900">
+                        {formatCurrency(transferItemTotal(item?.quantity || 0, item?.unit_price || 0))}
                       </span>
-                    )}
-                  </div>
-                  <div className="col-span-1 flex justify-end items-end">
-                    <Button type="button" variant="ghost" size="sm" onClick={() => remove(idx)}>
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </Button>
+                    </div>
                   </div>
                 </div>
               );

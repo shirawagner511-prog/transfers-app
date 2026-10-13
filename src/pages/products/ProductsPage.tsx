@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +21,11 @@ import { useAuth } from '@/hooks/useAuth';
 import { formatCurrency } from '@/lib/formatCurrency';
 import { ExportButton } from '@/components/ui/ExportButton';
 import { ItemInfoModal } from '@/components/ItemInfoModal';
+import { ItemSearch, type SearchOption } from '@/components/ItemSearch';
+import { fetchAll } from '@/lib/fetchAll';
+import { searchItems } from '@/lib/search';
+
+const PAGE_SIZE = 50;
 
 const PRODUCT_CATEGORIES = ['מנה ראשונה', 'מנה עיקרית', 'קינוח', 'משקה', 'חטיף', 'סלט', 'לחם ואפייה', 'חבילה', 'אחר'];
 
@@ -47,19 +52,21 @@ interface ProductWithIngredients extends Product {
   product_ingredients: (ProductIngredient & { ingredient: Ingredient })[];
 }
 
-async function fetchProducts() {
-  const { data, error } = await supabase
+function fetchProducts() {
+  return fetchAll<ProductWithIngredients>((from, to) => supabase
     .from('products')
     .select('*, product_ingredients(*, ingredient:ingredients(*))')
-    .order('name');
-  if (error) throw error;
-  return data as ProductWithIngredients[];
+    .order('name')
+    .range(from, to));
 }
 
-async function fetchIngredients() {
-  const { data, error } = await supabase.from('ingredients').select('id,name,unit,current_price').eq('is_active', true).order('name');
-  if (error) throw error;
-  return data as Ingredient[];
+function fetchIngredients() {
+  return fetchAll<Ingredient>((from, to) => supabase
+    .from('ingredients')
+    .select('id,name,unit,category,current_price,supplier:suppliers(id,name)')
+    .eq('is_active', true)
+    .order('name')
+    .range(from, to));
 }
 
 export function ProductsPage() {
@@ -76,6 +83,7 @@ export function ProductsPage() {
   const [confirmDelete, setConfirmDelete] = useState<ProductWithIngredients | null>(null);
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [infoItem, setInfoItem] = useState<ProductWithIngredients | null>(null);
+  const [shown, setShown] = useState(PAGE_SIZE);
 
   const { data: products = [], isLoading } = useQuery({ queryKey: ['products'], queryFn: fetchProducts });
   const { data: allIngredients = [] } = useQuery({ queryKey: ['ingredients-active'], queryFn: fetchIngredients });
@@ -87,6 +95,26 @@ export function ProductsPage() {
 
   const { fields, append, remove } = useFieldArray({ control, name: 'ingredients' });
   const watchedIngredients = watch('ingredients');
+
+  const ingredientOptions = useMemo<SearchOption[]>(() => allIngredients.map(i => ({
+    id: i.id,
+    name: i.name,
+    keywords: `${i.category ?? ''} ${i.supplier?.name ?? ''}`,
+    meta: [i.supplier?.name, i.category].filter(Boolean).join(' · ') || undefined,
+    price: <>{formatCurrency(i.current_price)}<span className="text-xs font-normal text-gray-500"> / {i.unit}</span></>,
+  })), [allIngredients]);
+
+  const chosenIngredientIds = new Set(watchedIngredients.map(i => i.ingredient_id));
+
+  function addIngredient(option: SearchOption) {
+    if (chosenIngredientIds.has(option.id)) {
+      toast.info(`"${option.name}" כבר במתכון`);
+      return;
+    }
+    const ing = allIngredients.find(i => i.id === option.id);
+    if (!ing) return;
+    append({ ingredient_id: ing.id, quantity: 1, unit: ing.unit, waste_percentage: 0 });
+  }
 
   const computedCost = watchedIngredients.reduce((sum, item) => {
     const ing = allIngredients.find(i => i.id === item.ingredient_id);
@@ -231,11 +259,12 @@ export function ProductsPage() {
 
   const activeProducts = products.filter(p => p.is_active);
   const archivedProducts = products.filter(p => !p.is_active);
-  const filtered = (view === 'active' ? activeProducts : archivedProducts).filter(p => {
-    if (filterCategory && p.category !== filterCategory) return false;
-    if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filtered = searchItems(
+    (view === 'active' ? activeProducts : archivedProducts).filter(p => !filterCategory || p.category === filterCategory),
+    search,
+    p => `${p.name} ${p.category ?? ''}`,
+    Infinity,
+  );
 
   const exportRows = filtered.map(p => ({
     'שם': p.name,
@@ -287,7 +316,7 @@ export function ProductsPage() {
 
       <Card className="mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Input placeholder="חפש מוצר..." value={search} onChange={e => setSearch(e.target.value)}
+          <Input placeholder="חפש מוצר..." value={search} onChange={e => { setSearch(e.target.value); setShown(PAGE_SIZE); }}
             startIcon={<Search className="w-4 h-4" />} />
           <Select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} placeholder="כל הקטגוריות">
             {PRODUCT_CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
@@ -303,7 +332,7 @@ export function ProductsPage() {
         />
       ) : (
         <div className="space-y-3">
-          {filtered.map(p => {
+          {filtered.slice(0, shown).map(p => {
             const cost = p.internal_transfer_price;
             const expanded = expandedId === p.id;
 
@@ -421,6 +450,13 @@ export function ProductsPage() {
               </Card>
             );
           })}
+          {filtered.length > shown && (
+            <div className="flex justify-center pt-1">
+              <Button variant="outline" size="sm" onClick={() => setShown(s => s + PAGE_SIZE)}>
+                הצג עוד ({filtered.length - shown} נוספים)
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -462,20 +498,19 @@ export function ProductsPage() {
           <div>
             <div className="flex items-center justify-between mb-2">
               <p className="text-sm font-medium text-gray-700">מרכיבים</p>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                icon={<Plus className="w-3.5 h-3.5" />}
-                onClick={() => append({ ingredient_id: '', quantity: 1, unit: '', waste_percentage: 0 })}
-              >
-                הוסף מרכיב
-              </Button>
+              {fields.length > 0 && <span className="text-xs text-gray-500">{fields.length} מרכיבים</span>}
             </div>
+
+            <ItemSearch
+              options={ingredientOptions}
+              onSelect={addIngredient}
+              selectedIds={chosenIngredientIds}
+              placeholder="חפש מרכיב להוספה (שם, ספק או קטגוריה)…"
+            />
 
             {/* Live cost preview */}
             {fields.length > 0 && (
-              <div className="flex items-center justify-between gap-4 text-xs bg-teal-50 rounded-lg px-3 py-2 mb-3">
+              <div className="flex items-center justify-between gap-4 text-xs bg-teal-50 rounded-lg px-3 py-2 mt-3">
                 <span>עלות מחושבת מהמתכון: <strong>{formatCurrency(computedCost)}</strong></span>
                 <button
                   type="button"
@@ -487,58 +522,45 @@ export function ProductsPage() {
               </div>
             )}
 
-            <div className="space-y-2">
-              {fields.map((field, idx) => (
-                <div key={field.id} className="grid grid-cols-12 gap-2 items-end p-2 bg-gray-50 rounded-lg">
-                  <div className="col-span-4">
-                    <Select
-                      label={idx === 0 ? 'מרכיב' : undefined}
-                      placeholder="בחר מרכיב"
-                      error={errors.ingredients?.[idx]?.ingredient_id?.message}
-                      {...register(`ingredients.${idx}.ingredient_id`, {
-                        onChange: e => {
-                          const ing = allIngredients.find(i => i.id === e.target.value);
-                          if (ing) {
-                            const current = fields[idx];
-                            if (!current) return;
-                          }
-                        }
-                      })}
-                    >
-                      {allIngredients.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
-                    </Select>
+            <div className="space-y-2 mt-2">
+              {fields.map((field, idx) => {
+                const row = watchedIngredients[idx];
+                const ing = allIngredients.find(i => i.id === row?.ingredient_id);
+                const lineCost = ing ? (row?.quantity || 0) * ing.current_price * (1 + (row?.waste_percentage || 0) / 100) : 0;
+                return (
+                  <div key={field.id} className="p-2.5 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{ing?.name ?? 'מרכיב לא פעיל'}</p>
+                        {ing && <p className="text-xs text-gray-500">{formatCurrency(ing.current_price)} / {ing.unit}</p>}
+                      </div>
+                      <button type="button" onClick={() => remove(idx)} className="p-1 text-red-400 hover:text-red-600 flex-shrink-0" aria-label="הסר מרכיב">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 items-end">
+                      <Input
+                        label="כמות"
+                        type="number" step="0.001" inputMode="decimal"
+                        error={errors.ingredients?.[idx]?.quantity?.message}
+                        {...register(`ingredients.${idx}.quantity`, { valueAsNumber: true })}
+                      />
+                      <Select label="יחידה" {...register(`ingredients.${idx}.unit`)}>
+                        {Array.from(new Set([row?.unit, 'ק"ג', 'גרם', 'ליטר', 'מ"ל', 'יחידה', 'חבילה'].filter(Boolean) as string[])).map(u => <option key={u} value={u}>{u}</option>)}
+                      </Select>
+                      <Input
+                        label="פחת %"
+                        type="number" step="0.1" placeholder="0" inputMode="decimal"
+                        {...register(`ingredients.${idx}.waste_percentage`, { valueAsNumber: true })}
+                      />
+                      <div className="col-span-3 sm:col-span-1 text-left sm:text-center pb-2">
+                        <span className="text-xs text-gray-500 sm:block">עלות: </span>
+                        <span className="text-sm font-semibold text-gray-900">{formatCurrency(lineCost)}</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-span-2">
-                    <Input
-                      label={idx === 0 ? 'כמות' : undefined}
-                      type="number" step="0.001"
-                      error={errors.ingredients?.[idx]?.quantity?.message}
-                      {...register(`ingredients.${idx}.quantity`, { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <Select
-                      label={idx === 0 ? 'יחידה' : undefined}
-                      placeholder="יחידה"
-                      {...register(`ingredients.${idx}.unit`)}
-                    >
-                      {['ק"ג', 'גרם', 'ליטר', 'מ"ל', 'יחידה', 'חבילה'].map(u => <option key={u} value={u}>{u}</option>)}
-                    </Select>
-                  </div>
-                  <div className="col-span-2">
-                    <Input
-                      label={idx === 0 ? 'פחת %' : undefined}
-                      type="number" step="0.1" placeholder="0"
-                      {...register(`ingredients.${idx}.waste_percentage`, { valueAsNumber: true })}
-                    />
-                  </div>
-                  <div className="col-span-2 flex justify-end">
-                    <Button type="button" variant="ghost" size="sm" onClick={() => remove(idx)}>
-                      <Trash2 className="w-4 h-4 text-red-400" />
-                    </Button>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 

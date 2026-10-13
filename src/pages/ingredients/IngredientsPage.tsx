@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +22,10 @@ import { formatCurrency } from '@/lib/formatCurrency';
 import { formatDateTime } from '@/lib/dateUtils';
 import { ExportButton } from '@/components/ui/ExportButton';
 import { ItemInfoModal } from '@/components/ItemInfoModal';
+import { fetchAll } from '@/lib/fetchAll';
+import { searchItems } from '@/lib/search';
+
+const PAGE_SIZE = 50;
 
 const UNITS = ['ק"ג', 'גרם', 'ליטר', 'מ"ל', 'יחידה', 'חבילה', 'קרטון', 'צרור'];
 const CATEGORIES = ['ירקות', 'פירות', 'בשר', 'עוף', 'דגים', 'מוצרי חלב', 'לחם ואפייה', 'תבלינים', 'שמנים', 'יבש', 'משקאות', 'אחר'];
@@ -44,19 +48,16 @@ const priceSchema = z.object({
 type FormData = z.infer<typeof schema>;
 type PriceFormData = z.infer<typeof priceSchema>;
 
-async function fetchIngredients() {
-  const { data, error } = await supabase
+function fetchIngredients() {
+  return fetchAll<Ingredient>((from, to) => supabase
     .from('ingredients')
     .select('*, supplier:suppliers(id,name)')
-    .order('name');
-  if (error) throw error;
-  return data as Ingredient[];
+    .order('name')
+    .range(from, to));
 }
 
-async function fetchSuppliers() {
-  const { data, error } = await supabase.from('suppliers').select('id,name').order('name');
-  if (error) throw error;
-  return data as Supplier[];
+function fetchSuppliers() {
+  return fetchAll<Supplier>((from, to) => supabase.from('suppliers').select('id,name').order('name').range(from, to));
 }
 
 async function fetchPriceHistory(ingredientId: string) {
@@ -82,6 +83,7 @@ export function IngredientsPage() {
   const [confirmDelete, setConfirmDelete] = useState<Ingredient | null>(null);
   const [confirmBulk, setConfirmBulk] = useState(false);
   const [infoItem, setInfoItem] = useState<Ingredient | null>(null);
+  const [shown, setShown] = useState(PAGE_SIZE);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Ingredient | null>(null);
@@ -92,6 +94,12 @@ export function IngredientsPage() {
 
   const { data: ingredients = [], isLoading } = useQuery({ queryKey: ['ingredients'], queryFn: fetchIngredients });
   const { data: suppliers = [] } = useQuery({ queryKey: ['suppliers'], queryFn: fetchSuppliers });
+  // Fixed list + every category already used (the price list brings its own)
+  const categories = useMemo(
+    () => Array.from(new Set([...CATEGORIES, ...ingredients.map(i => i.category).filter((c): c is string => !!c)]))
+      .sort((a, b) => a.localeCompare(b, 'he')),
+    [ingredients],
+  );
   const { data: priceHistory = [], isLoading: historyLoading } = useQuery({
     queryKey: ['ingredient-price-history', historyTarget?.id],
     queryFn: () => fetchPriceHistory(historyTarget!.id),
@@ -255,13 +263,17 @@ export function IngredientsPage() {
 
   const activeIngredients = ingredients.filter(i => i.is_active);
   const archivedIngredients = ingredients.filter(i => !i.is_active);
-  const filtered = (view === 'active' ? activeIngredients : archivedIngredients).filter(ing => {
-    if (filterCategory && ing.category !== filterCategory) return false;
-    if (filterSupplier && ing.supplier_id !== filterSupplier) return false;
-    if (filterUnit && ing.unit !== filterUnit) return false;
-    if (search && !ing.name.toLowerCase().includes(search.toLowerCase())) return false;
-    return true;
-  });
+  const filtered = searchItems(
+    (view === 'active' ? activeIngredients : archivedIngredients).filter(ing => {
+      if (filterCategory && ing.category !== filterCategory) return false;
+      if (filterSupplier && ing.supplier_id !== filterSupplier) return false;
+      if (filterUnit && ing.unit !== filterUnit) return false;
+      return true;
+    }),
+    search,
+    ing => `${ing.name} ${ing.category ?? ''} ${ing.supplier?.name ?? ''}`,
+    Infinity,
+  );
 
   const exportRows = filtered.map(ing => ({
     'שם': ing.name,
@@ -315,15 +327,15 @@ export function IngredientsPage() {
       {/* Filters */}
       <Card className="mb-6">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <Input placeholder="חפש מרכיב..." value={search} onChange={e => setSearch(e.target.value)}
+          <Input placeholder="חפש מרכיב, ספק או קטגוריה..." value={search} onChange={e => { setSearch(e.target.value); setShown(PAGE_SIZE); }}
             startIcon={<Search className="w-4 h-4" />} />
-          <Select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} placeholder="כל הקטגוריות">
-            {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+          <Select value={filterCategory} onChange={e => { setFilterCategory(e.target.value); setShown(PAGE_SIZE); }} placeholder="כל הקטגוריות">
+            {categories.map(c => <option key={c} value={c}>{c}</option>)}
           </Select>
-          <Select value={filterSupplier} onChange={e => setFilterSupplier(e.target.value)} placeholder="כל הספקים">
+          <Select value={filterSupplier} onChange={e => { setFilterSupplier(e.target.value); setShown(PAGE_SIZE); }} placeholder="כל הספקים">
             {suppliers.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
-          <Select value={filterUnit} onChange={e => setFilterUnit(e.target.value)} placeholder="כל היחידות">
+          <Select value={filterUnit} onChange={e => { setFilterUnit(e.target.value); setShown(PAGE_SIZE); }} placeholder="כל היחידות">
             {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
           </Select>
         </div>
@@ -337,7 +349,7 @@ export function IngredientsPage() {
         />
       ) : (
         <div className="space-y-2">
-          {filtered.map(ing => (
+          {filtered.slice(0, shown).map(ing => (
             <Card key={ing.id} padding={false}>
               <div className="p-3">
                 <div className="flex items-start justify-between gap-2">
@@ -374,6 +386,13 @@ export function IngredientsPage() {
               </div>
             </Card>
           ))}
+          {filtered.length > shown && (
+            <div className="flex justify-center pt-1">
+              <Button variant="outline" size="sm" onClick={() => setShown(s => s + PAGE_SIZE)}>
+                הצג עוד ({filtered.length - shown} נוספים)
+              </Button>
+            </div>
+          )}
         </div>
       )}
 
@@ -396,7 +415,7 @@ export function IngredientsPage() {
           <div className="grid grid-cols-2 gap-3">
             <Input label="שם המרכיב" required error={errors.name?.message} {...register('name')} className="col-span-2" />
             <Select label="קטגוריה" placeholder="בחר קטגוריה" {...register('category')}>
-              {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </Select>
             <Select label="יחידת מידה" required error={errors.unit?.message} placeholder="בחר יחידה" {...register('unit')}>
               {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
